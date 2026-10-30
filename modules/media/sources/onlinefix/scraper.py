@@ -62,9 +62,10 @@ def _extract_downloads(soup) -> list[dict]:
     import re
     out: list[dict] = []
     for a in soup.find_all("a", href=True):
+        txt = a.get_text(strip=True)
         href = a["href"]
-        if "/ext/" in href:
-            label = re.sub(r"^\s*скачать\s+", "", a.get_text(strip=True), flags=re.I).strip() or "Download"
+        if "/ext/" in href and re.search(r"скачать", txt, re.I):
+            label = re.sub(r"^\s*скачать\s+", "", txt, flags=re.I).strip() or "Download"
             out.append({"label": label, "url": href})
     return out
 

@@ -1,0 +1,16 @@
+[Unit]
+Description=media-platform Admin API (bot-config)
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/projects/media-platform
+EnvironmentFile=/root/projects/media-platform/.env
+Environment=PYTHONPATH=/root/projects/media-platform
+ExecStart=/root/projects/media-platform/.venv/bin/uvicorn apps.admin.app:app --host 127.0.0.1 --port 8002
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

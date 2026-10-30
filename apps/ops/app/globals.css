@@ -1,1 +1,82 @@
 @import "tailwindcss";
+
+@theme {
+  --color-bg: #0a0a0b;
+  --color-surface: #111113;
+  --color-surface-2: #17171a;
+  --color-border: #26262b;
+  --color-border-strong: #33333a;
+  --color-fg: #ededf0;
+  --color-muted: #8b8b93;
+  --color-faint: #5c5c64;
+  --color-brand: #34d399;
+  --color-brand-2: #38bdf8;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  background:
+    radial-gradient(900px circle at 15% -10%, rgba(52, 211, 153, 0.06), transparent 45%),
+    radial-gradient(900px circle at 90% 0%, rgba(56, 189, 248, 0.05), transparent 45%),
+    #0a0a0b;
+  background-attachment: fixed;
+}
+
+::selection {
+  background: rgba(52, 211, 153, 0.3);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #33333a transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+  background: #33333a;
+  border: 3px solid transparent;
+  background-clip: content-box;
+  border-radius: 9999px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: #45454d;
+  background-clip: content-box;
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: #17171a;
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.04), transparent);
+  animation: shimmer 1.6s infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}

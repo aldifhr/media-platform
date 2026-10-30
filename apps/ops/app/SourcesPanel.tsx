@@ -1,59 +1,151 @@
 "use client";
 
+import { motion } from "framer-motion";
+import { Rss, Radio } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { Source } from "@/lib/api";
+import { useToast } from "./components/Toast";
+import { Toggle } from "./components/controls";
+import { Badge, Card, CardHeader, EmptyState, ErrorState } from "./components/ui";
+
+const MODULE_TONE: Record<string, "blue" | "violet" | "green" | "amber"> = {
+  media: "blue",
+  manhwa: "violet",
+};
+
+function relTime(iso: string | null): string {
+  if (!iso) return "never";
+  const t = new Date(iso).getTime();
+  if (!Number.isFinite(t)) return "never";
+  const s = Math.max(0, Math.round((Date.now() - t) / 1000));
+  if (s < 60) return `${s}s ago`;
+  if (s < 3600) return `${Math.round(s / 60)}m ago`;
+  if (s < 86400) return `${Math.round(s / 3600)}h ago`;
+  return `${Math.round(s / 86400)}d ago`;
+}
 
 export default function SourcesPanel({ sources }: { sources: Source[] }) {
   const router = useRouter();
-  const [busy, setBusy] = useState<string | null>(null);
+  const toast = useToast();
+  const [pending, setPending] = useState<string | null>(null);
 
   async function toggle(s: Source) {
-    setBusy(s.id);
+    const next = !s.enabled;
+    setPending(s.id);
     try {
-      await fetch(`/api/sources/${s.id}`, {
+      const res = await fetch(`/api/sources/${s.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ enabled: !s.enabled }),
+        body: JSON.stringify({ enabled: next }),
       });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      toast.push("ok", `${s.id} ${next ? "enabled" : "disabled"}`);
       router.refresh();
+    } catch (e) {
+      toast.push("err", `Failed to update ${s.id}: ${e instanceof Error ? e.message : e}`);
     } finally {
-      setBusy(null);
+      setPending(null);
     }
   }
 
+  const enabled = sources.filter((s) => s.enabled).length;
+  const unhealthy = sources.filter((s) => s.error_streak > 0).length;
+
   return (
-    <section className="rounded-xl border border-neutral-800 bg-neutral-900/50">
-      <h2 className="border-b border-neutral-800 px-4 py-3 text-sm font-medium text-neutral-300">
-        Sources
-      </h2>
-      <ul className="divide-y divide-neutral-800">
-        {sources.map((s) => (
-          <li key={s.id} className="flex items-center justify-between px-4 py-3">
-            <div>
-              <div className="font-mono text-sm text-neutral-100">{s.id}</div>
-              <div className="text-xs text-neutral-500">
-                {s.module} · {s.category} · every {s.interval_minutes}m · errors {s.error_streak}
-              </div>
-            </div>
-            <button
-              onClick={() => toggle(s)}
-              disabled={busy === s.id}
-              className={
-                "rounded-md px-3 py-1 text-xs font-medium transition-colors " +
-                (s.enabled
-                  ? "bg-emerald-600/20 text-emerald-300 hover:bg-emerald-600/30"
-                  : "bg-neutral-700/40 text-neutral-400 hover:bg-neutral-700/60")
-              }
+    <Card>
+      <CardHeader
+        icon={<Rss className="h-4 w-4" />}
+        title="Sources"
+        subtitle={
+          <span>
+            {sources.length} registered · {enabled} enabled
+            {unhealthy > 0 && <span className="text-amber-400"> · {unhealthy} with errors</span>}
+          </span>
+        }
+      />
+
+      {sources.length === 0 ? (
+        <EmptyState
+          icon={<Radio className="h-5 w-5" />}
+          title="No sources registered"
+          hint="Sources appear here once the platform registers them on startup."
+        />
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-sm">
+            <thead>
+              <tr className="border-b border-[#26262b] text-left text-[11px] uppercase tracking-wider text-[#5c5c64]">
+                <th className="px-5 py-2.5 font-medium">Source</th>
+                <th className="px-3 py-2.5 font-medium">Module</th>
+                <th className="px-3 py-2.5 font-medium">Interval</th>
+                <th className="px-3 py-2.5 font-medium">Last success</th>
+                <th className="px-3 py-2.5 font-medium">Errors</th>
+                <th className="px-5 py-2.5 text-right font-medium">State</th>
+              </tr>
+            </thead>
+            <motion.tbody
+              initial="hidden"
+              animate="show"
+              variants={{ hidden: {}, show: { transition: { staggerChildren: 0.05 } } }}
+              className="divide-y divide-[#26262b]/60"
             >
-              {s.enabled ? "enabled" : "disabled"}
-            </button>
-          </li>
-        ))}
-        {sources.length === 0 && (
-          <li className="px-4 py-3 text-sm text-neutral-500">No sources registered.</li>
-        )}
-      </ul>
-    </section>
+              {sources.map((s) => (
+                <motion.tr
+                  key={s.id}
+                  variants={{
+                    hidden: { opacity: 0, y: 8 },
+                    show: { opacity: 1, y: 0, transition: { duration: 0.35, ease: [0.22, 1, 0.36, 1] } },
+                  }}
+                  whileHover={{ backgroundColor: "rgba(255,255,255,0.02)" }}
+                  className="transition-colors"
+                >
+                  <td className="px-5 py-3 font-mono text-[13px] text-[#ededf0]">{s.id}</td>
+                  <td className="px-3 py-3">
+                    <div className="flex items-center gap-2">
+                      <Badge tone={MODULE_TONE[s.module] || "neutral"}>{s.module}</Badge>
+                      {s.category && (
+                        <span className="text-xs text-[#8b8b93]">{s.category}</span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-3 py-3 tabular-nums text-[#8b8b93]">
+                    {s.interval_minutes}m
+                  </td>
+                  <td className="px-3 py-3 text-[#8b8b93]">{relTime(s.last_success_at)}</td>
+                  <td className="px-3 py-3">
+                    {s.error_streak > 0 ? (
+                      <Badge tone="amber">{s.error_streak}</Badge>
+                    ) : (
+                      <span className="text-[#5c5c64]">—</span>
+                    )}
+                  </td>
+                  <td className="px-5 py-3">
+                    <div className="flex justify-end">
+                      <Toggle
+                        checked={s.enabled}
+                        disabled={pending === s.id}
+                        loading={pending === s.id}
+                        onChange={() => toggle(s)}
+                        labels={["on", "off"]}
+                      />
+                    </div>
+                  </td>
+                </motion.tr>
+              ))}
+            </motion.tbody>
+          </table>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+export function SourcesError({ error }: { error: string }) {
+  return (
+    <Card>
+      <CardHeader icon={<Rss className="h-4 w-4" />} title="Sources" />
+      <ErrorState error={error} />
+    </Card>
   );
 }

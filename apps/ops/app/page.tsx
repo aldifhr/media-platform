@@ -1,6 +1,19 @@
+import {
+  Activity,
+  Bell,
+  Boxes,
+  LayoutDashboard,
+  Rss,
+  Server,
+  Users,
+} from "lucide-react";
 import LogoutButton from "./LogoutButton";
 import ManhwaConfigPanel from "./ManhwaConfigPanel";
-import SourcesPanel from "./SourcesPanel";
+import RoutesTable from "./RoutesTable";
+import SourcesPanel, { SourcesError } from "./SourcesPanel";
+import { Reveal, StaggerGroup, StaggerItem } from "./components/motion";
+import { Stat } from "./components/stats";
+import { Badge, Card, CardHeader, EmptyState, ErrorState } from "./components/ui";
 import {
   getGuilds,
   getManhwaConfig,
@@ -13,31 +26,14 @@ import {
 
 export const dynamic = "force-dynamic";
 
-function Card({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section className="rounded-xl border border-neutral-800 bg-neutral-900/50">
-      <h2 className="border-b border-neutral-800 px-4 py-3 text-sm font-medium text-neutral-300">
-        {title}
-      </h2>
-      <div className="px-4 py-3 text-sm text-neutral-200">{children}</div>
-    </section>
-  );
-}
-
 type Res<T> = { data: T | null; error: string | null };
 
-// Fetch independently so one failure never masks the others, and so a real
-// error (401/network) is shown as an error — never as a fake "empty" state.
 async function safe<T>(fn: () => Promise<T>): Promise<Res<T>> {
   try {
     return { data: await fn(), error: null };
   } catch (e) {
     return { data: null, error: e instanceof Error ? e.message : String(e) };
   }
-}
-
-function Err({ error }: { error: string }) {
-  return <span className="font-mono text-xs text-red-400">fetch error: {error}</span>;
 }
 
 export default async function Dashboard() {
@@ -50,105 +46,204 @@ export default async function Dashboard() {
     safe(getManhwaConfig),
     safe(getManhwaHealth),
   ]);
+
+  const sources = sourcesR.data || [];
   const stats = statsR.data || {};
+  const health = mhHealthR.data || [];
+  const outboxTotal = Object.values(stats).reduce((a, b) => a + b, 0);
+  const sourcesUp = sources.filter((s) => s.enabled && s.error_streak === 0).length;
+  const sourcesDown = sources.filter((s) => s.error_streak > 0).length;
+  const healthBad = health.filter((h) => h.status.toUpperCase() !== "HEALTHY").length;
+  const allHealthy = sources.length > 0 && sourcesDown === 0 && healthBad === 0;
 
   return (
-    <main className="mx-auto max-w-5xl space-y-6 p-6">
-      <header className="flex items-center justify-between">
-        <div className="flex items-baseline gap-3">
-          <h1 className="text-2xl font-semibold tracking-tight">media-platform · bot config</h1>
-          <span className="text-xs text-neutral-500">unified Discord bot dashboard</span>
-        </div>
-        <LogoutButton />
-      </header>
-
-      <Card title="Outbox">
-        {statsR.error ? (
-          <Err error={statsR.error} />
-        ) : Object.keys(stats).length === 0 ? (
-          <span className="text-neutral-500">empty</span>
-        ) : (
-          <div className="flex gap-6 font-mono text-xs">
-            {Object.entries(stats).map(([k, v]) => (
-              <span key={k}>
-                <span className="text-neutral-400">{k}</span>: <span className="text-neutral-100">{v}</span>
-              </span>
-            ))}
+    <div className="min-h-screen">
+      <TopBar healthy={allHealthy} />
+      <main className="mx-auto max-w-6xl px-5 py-8 sm:px-8">
+        <Reveal className="mb-7">
+          <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-wider text-[#5c5c64]">
+            <LayoutDashboard className="h-3.5 w-3.5" />
+            Overview
           </div>
-        )}
-      </Card>
+          <h1 className="mt-2 text-2xl font-semibold tracking-tight text-[#ededf0]">
+            Bot control center
+          </h1>
+          <p className="mt-1 max-w-xl text-sm text-[#8b8b93]">
+            Live status for sources, notifications, and Discord bot configuration across the
+            platform.
+          </p>
+        </Reveal>
 
-      {sourcesR.error ? (
-        <Card title="Sources">
-          <Err error={sourcesR.error} />
-        </Card>
-      ) : (
-        <SourcesPanel sources={sourcesR.data || []} />
-      )}
+        <StaggerGroup className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <StaggerItem>
+            <Stat
+              label="Sources up"
+              value={`${sourcesUp}/${sources.length}`}
+              tone={sourcesDown > 0 ? "amber" : "green"}
+              hint={sourcesDown > 0 ? `${sourcesDown} with errors` : "all healthy"}
+              icon={<Rss className="h-3 w-3" />}
+            />
+          </StaggerItem>
+          <StaggerItem>
+            <Stat
+              label="Source health"
+              value={health.length === 0 ? "—" : `${health.length - healthBad}/${health.length}`}
+              tone={healthBad > 0 ? "amber" : health.length ? "green" : "neutral"}
+              hint={health.length ? `${healthBad} degraded` : "no data"}
+              icon={<Activity className="h-3 w-3" />}
+            />
+          </StaggerItem>
+          <StaggerItem>
+            <Stat
+              label="Guilds"
+              value={guildsR.data?.length ?? "—"}
+              hint="connected"
+              icon={<Users className="h-3 w-3" />}
+            />
+          </StaggerItem>
+          <StaggerItem>
+            <Stat
+              label="Outbox"
+              value={outboxTotal}
+              tone={statsR.error ? "red" : "neutral"}
+              hint={Object.keys(stats).length ? Object.keys(stats).join(" · ") : "empty"}
+              icon={<Bell className="h-3 w-3" />}
+            />
+          </StaggerItem>
+        </StaggerGroup>
 
-      {mhCfgR.error || mhHealthR.error ? (
-        <Card title="Manhwa bot config">
-          <Err error={mhCfgR.error || mhHealthR.error || ""} />
-        </Card>
-      ) : (
-        <ManhwaConfigPanel config={mhCfgR.data || []} health={mhHealthR.data || []} />
-      )}
+        <div className="mt-6 space-y-6">
+          <Reveal delay={0.05}>
+            {sourcesR.error ? (
+              <SourcesError error={sourcesR.error} />
+            ) : (
+              <SourcesPanel sources={sources} />
+            )}
+          </Reveal>
 
-      <Card title="Guilds">
-        {guildsR.error ? (
-          <Err error={guildsR.error} />
-        ) : !guildsR.data || guildsR.data.length === 0 ? (
-          <span className="text-neutral-500">No guilds yet.</span>
-        ) : (
-          <ul className="space-y-1 font-mono text-xs">
-            {guildsR.data.map((g) => (
-              <li key={g.id}>
-                {g.id} — {g.name || "(unnamed)"}
-              </li>
-            ))}
-          </ul>
-        )}
-      </Card>
+          <Reveal delay={0.1}>
+            {mhCfgR.error || mhHealthR.error ? (
+              <Card>
+                <CardHeader icon={<Server className="h-4 w-4" />} title="Manhwa config" />
+                <ErrorState error={mhCfgR.error || mhHealthR.error || ""} />
+              </Card>
+            ) : (
+              <ManhwaConfigPanel config={mhCfgR.data || []} health={health} />
+            )}
+          </Reveal>
 
-      <Card title="Subscriptions">
-        {subsR.error ? (
-          <Err error={subsR.error} />
-        ) : !subsR.data || subsR.data.length === 0 ? (
-          <span className="text-neutral-500">No subscriptions configured.</span>
-        ) : (
-          <ul className="space-y-1 font-mono text-xs">
-            {subsR.data.map((s) => (
-              <li key={s.id}>
-                guild {s.guild_id} · {s.module}
-                {s.category ? `/${s.category}` : ""} → channel {s.channel_id}{" "}
-                <span className={s.enabled ? "text-emerald-400" : "text-neutral-500"}>
-                  {s.enabled ? "on" : "off"}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Card>
+          <div className="grid gap-6 lg:grid-cols-2">
+            <Reveal delay={0.15}>
+              <Card>
+                <CardHeader
+                  icon={<Users className="h-4 w-4" />}
+                  title="Guilds"
+                  subtitle={`${guildsR.data?.length ?? 0} connected`}
+                />
+                {guildsR.error ? (
+                  <ErrorState error={guildsR.error} />
+                ) : !guildsR.data || guildsR.data.length === 0 ? (
+                  <EmptyState
+                    icon={<Users className="h-5 w-5" />}
+                    title="No guilds yet"
+                    hint="Guilds appear once the bot joins a server."
+                  />
+                ) : (
+                  <StaggerGroup className="divide-y divide-[#26262b]/60">
+                    {guildsR.data.map((g) => (
+                      <StaggerItem key={g.id}>
+                        <div className="flex items-center justify-between gap-3 px-5 py-3">
+                          <span className="truncate text-sm text-[#ededf0]">
+                            {g.name || <span className="text-[#5c5c64]">(unnamed)</span>}
+                          </span>
+                          <code className="shrink-0 font-mono text-[11px] text-[#5c5c64]">
+                            {g.id}
+                          </code>
+                        </div>
+                      </StaggerItem>
+                    ))}
+                  </StaggerGroup>
+                )}
+              </Card>
+            </Reveal>
 
-      <Card title="Notification routes">
-        {routesR.error ? (
-          <Err error={routesR.error} />
-        ) : !routesR.data || routesR.data.length === 0 ? (
-          <span className="text-neutral-500">No routes configured.</span>
-        ) : (
-          <ul className="space-y-1 font-mono text-xs">
-            {routesR.data.map((r) => (
-              <li key={r.id}>
-                p{r.priority} · {r.module} · {r.event_type} →{" "}
-                {r.thread_id ? `thread ${r.thread_id}` : `channel ${r.channel_id}`}{" "}
-                <span className={r.enabled ? "text-emerald-400" : "text-neutral-500"}>
-                  {r.enabled ? "on" : "off"}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Card>
-    </main>
+            <Reveal delay={0.2}>
+              <Card>
+                <CardHeader
+                  icon={<Boxes className="h-4 w-4" />}
+                  title="Subscriptions"
+                  subtitle={`${subsR.data?.length ?? 0} configured`}
+                />
+                {subsR.error ? (
+                  <ErrorState error={subsR.error} />
+                ) : !subsR.data || subsR.data.length === 0 ? (
+                  <EmptyState
+                    icon={<Boxes className="h-5 w-5" />}
+                    title="No subscriptions"
+                    hint="Subscribe a guild to a module to start delivering notifications."
+                  />
+                ) : (
+                  <StaggerGroup className="divide-y divide-[#26262b]/60">
+                    {subsR.data.map((s) => (
+                      <StaggerItem key={s.id}>
+                        <div className="flex items-center justify-between gap-3 px-5 py-3">
+                          <div className="flex min-w-0 items-center gap-2">
+                            <Badge tone={s.module === "manhwa" ? "violet" : "blue"}>
+                              {s.module}
+                            </Badge>
+                            {s.category && (
+                              <span className="truncate text-xs text-[#8b8b93]">{s.category}</span>
+                            )}
+                          </div>
+                          <div className="flex shrink-0 items-center gap-3 text-[11px] text-[#5c5c64]">
+                            <span className="font-mono">ch {s.channel_id}</span>
+                            <Badge tone={s.enabled ? "green" : "neutral"}>
+                              {s.enabled ? "on" : "off"}
+                            </Badge>
+                          </div>
+                        </div>
+                      </StaggerItem>
+                    ))}
+                  </StaggerGroup>
+                )}
+              </Card>
+            </Reveal>
+          </div>
+
+          <Reveal delay={0.25}>
+            <RoutesTable routes={routesR.data || []} error={routesR.error} />
+          </Reveal>
+        </div>
+      </main>
+    </div>
+  );
+}
+
+function TopBar({ healthy }: { healthy: boolean }) {
+  return (
+    <header className="sticky top-0 z-30 border-b border-[#26262b] bg-[#0a0a0b]/70 backdrop-blur-md">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-3 sm:px-8">
+        <div className="flex items-center gap-3">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-400/90 to-sky-500/90 text-[13px] font-bold text-[#0a0a0b] shadow-lg shadow-emerald-500/10">
+            m
+          </span>
+          <div className="leading-tight">
+            <div className="text-sm font-semibold text-[#ededf0]">media-platform</div>
+            <div className="text-[11px] text-[#5c5c64]">bot config</div>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="hidden items-center gap-1.5 rounded-full border border-[#26262b] bg-[#111113]/60 px-2.5 py-1 text-[11px] text-[#8b8b93] sm:inline-flex">
+            <span
+              className={
+                "h-1.5 w-1.5 rounded-full " + (healthy ? "bg-emerald-400" : "bg-amber-400")
+              }
+            />
+            {healthy ? "all systems healthy" : "attention needed"}
+          </span>
+          <LogoutButton />
+        </div>
+      </div>
+    </header>
   );
 }

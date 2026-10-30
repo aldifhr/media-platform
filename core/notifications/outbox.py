@@ -48,9 +48,10 @@ class OutboxRepo:
 
     async def claim_batch(self, session: AsyncSession, limit: int = 50) -> list[dict]:
         rows = (
-            await session.execute(
-                text(
-                    """
+            (
+                await session.execute(
+                    text(
+                        """
                     SELECT id, event_id, event_type, version, source, occurred_at,
                            payload, attempts, max_attempts
                     FROM platform.notification_outbox
@@ -59,10 +60,13 @@ class OutboxRepo:
                     FOR UPDATE SKIP LOCKED
                     LIMIT :limit
                     """
-                ),
-                {"limit": limit},
+                    ),
+                    {"limit": limit},
+                )
             )
-        ).mappings().all()
+            .mappings()
+            .all()
+        )
         ids = [r["id"] for r in rows]
         if ids:
             await session.execute(

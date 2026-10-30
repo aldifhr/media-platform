@@ -1,15 +1,7 @@
 import LogoutButton from "./LogoutButton";
 import ManhwaConfigPanel from "./ManhwaConfigPanel";
 import SourcesPanel from "./SourcesPanel";
-import {
-  getGuilds,
-  getManhwaConfig,
-  getManhwaHealth,
-  getOutboxStats,
-  getRoutes,
-  getSources,
-  getSubscriptions,
-} from "@/lib/api";
+import { getManhwaConfig, getManhwaHealth, getSources } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 
@@ -41,16 +33,11 @@ function Err({ error }: { error: string }) {
 }
 
 export default async function Dashboard() {
-  const [guildsR, subsR, routesR, sourcesR, statsR, mhCfgR, mhHealthR] = await Promise.all([
-    safe(getGuilds),
-    safe(getSubscriptions),
-    safe(getRoutes),
+  const [sourcesR, mhCfgR, mhHealthR] = await Promise.all([
     safe(getSources),
-    safe(getOutboxStats),
     safe(getManhwaConfig),
     safe(getManhwaHealth),
   ]);
-  const stats = statsR.data || {};
 
   return (
     <main className="mx-auto max-w-5xl space-y-6 p-6">
@@ -61,22 +48,6 @@ export default async function Dashboard() {
         </div>
         <LogoutButton />
       </header>
-
-      <Card title="Outbox">
-        {statsR.error ? (
-          <Err error={statsR.error} />
-        ) : Object.keys(stats).length === 0 ? (
-          <span className="text-neutral-500">empty</span>
-        ) : (
-          <div className="flex gap-6 font-mono text-xs">
-            {Object.entries(stats).map(([k, v]) => (
-              <span key={k}>
-                <span className="text-neutral-400">{k}</span>: <span className="text-neutral-100">{v}</span>
-              </span>
-            ))}
-          </div>
-        )}
-      </Card>
 
       {sourcesR.error ? (
         <Card title="Sources">
@@ -93,62 +64,6 @@ export default async function Dashboard() {
       ) : (
         <ManhwaConfigPanel config={mhCfgR.data || []} health={mhHealthR.data || []} />
       )}
-
-      <Card title="Guilds">
-        {guildsR.error ? (
-          <Err error={guildsR.error} />
-        ) : !guildsR.data || guildsR.data.length === 0 ? (
-          <span className="text-neutral-500">No guilds yet.</span>
-        ) : (
-          <ul className="space-y-1 font-mono text-xs">
-            {guildsR.data.map((g) => (
-              <li key={g.id}>
-                {g.id} — {g.name || "(unnamed)"}
-              </li>
-            ))}
-          </ul>
-        )}
-      </Card>
-
-      <Card title="Subscriptions">
-        {subsR.error ? (
-          <Err error={subsR.error} />
-        ) : !subsR.data || subsR.data.length === 0 ? (
-          <span className="text-neutral-500">No subscriptions configured.</span>
-        ) : (
-          <ul className="space-y-1 font-mono text-xs">
-            {subsR.data.map((s) => (
-              <li key={s.id}>
-                guild {s.guild_id} · {s.module}
-                {s.category ? `/${s.category}` : ""} → channel {s.channel_id}{" "}
-                <span className={s.enabled ? "text-emerald-400" : "text-neutral-500"}>
-                  {s.enabled ? "on" : "off"}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Card>
-
-      <Card title="Notification routes">
-        {routesR.error ? (
-          <Err error={routesR.error} />
-        ) : !routesR.data || routesR.data.length === 0 ? (
-          <span className="text-neutral-500">No routes configured.</span>
-        ) : (
-          <ul className="space-y-1 font-mono text-xs">
-            {routesR.data.map((r) => (
-              <li key={r.id}>
-                p{r.priority} · {r.module} · {r.event_type} →{" "}
-                {r.thread_id ? `thread ${r.thread_id}` : `channel ${r.channel_id}`}{" "}
-                <span className={r.enabled ? "text-emerald-400" : "text-neutral-500"}>
-                  {r.enabled ? "on" : "off"}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Card>
     </main>
   );
 }

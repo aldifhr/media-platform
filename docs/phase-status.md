@@ -53,7 +53,12 @@ Live checklist. Updated as phases complete. `✅` done · `🚧` in progress · 
 - [x] media-backend.aldifhr.my.id LIVE via nginx -> :3000 (TLS ok)
 - [x] CUTOVER DONE: platform-api(:3000)+platform-cron(:3001) run migrated manhwa; manhwa-api/cron stopped+disabled
 - [x] fixed: recent_chapters re-exports batch_insert_recent_chapters (from _ingest) — pipeline completes (status ok, HEALTHY)
-## Phase 6 — Media module (pahe) ⬜ (after manhwa, per LO)
+
+## Phase 6 — Media module (pahe) ✅ DONE
+- [x] vendor pahe into modules/media (sources/pahe + common + scheduler + source_health)
+- [x] 39 regression tests green; requests dep; ruff clean
+- [x] PROVEN running (isolated boot: /pahe 200, scheduler scrapes)
+- [x] CUTOVER DONE: platform-media(:3100) runs migrated pahe; pahe-scanner stopped+disabled; state migrated; all-scan.aldifhr.my.id live
 ## Phase 7 — Database consolidation ⬜
 ## Phase 8 — API + frontend compatibility ⬜
 ## Phase 9 — Integration + regression tests ⬜

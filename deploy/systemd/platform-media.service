@@ -1,0 +1,18 @@
+[Unit]
+Description=media-platform Media (migrated pahe release notifier)
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/projects/media-platform
+EnvironmentFile=/root/projects/media-platform/.env
+Environment=MEDIA_PORT=3100
+Environment=LOG_LEVEL=INFO
+Environment=PYTHONPATH=/root/projects/media-platform
+ExecStart=/root/projects/media-platform/.venv/bin/python modules/media/main.py
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

@@ -51,3 +51,24 @@ export const getSubscriptions = () => api<Subscription[]>("/api/platform/subscri
 export const getRoutes = () => api<Route[]>("/api/platform/routes");
 export const getSources = () => api<Source[]>("/api/platform/sources");
 export const getOutboxStats = () => api<Record<string, number>>("/api/platform/outbox/stats");
+
+export type ManhwaConfig = {
+  guild_id: string;
+  channel_id: string | null;
+  raw_channel_id: string | null;
+  whitelist_channel_id: string | null;
+  origin_filter: string | null;
+  label: string | null;
+  type_filter: string | null;
+  updated_at: string | null;
+};
+export type ManhwaHealth = {
+  source: string;
+  status: string;
+  consecutive_failures: number;
+  last_error: string | null;
+  last_success_at: string | null;
+  response_time_ms: number | null;
+};
+export const getManhwaConfig = () => api<ManhwaConfig[]>("/api/platform/manhwa/config");
+export const getManhwaHealth = () => api<ManhwaHealth[]>("/api/platform/manhwa/health");

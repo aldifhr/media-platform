@@ -150,6 +150,23 @@ def create_app() -> FastAPI:
             ).mappings().all()
             return [dict(r) for r in rows]
 
+    @app.get("/api/platform/sources/{source_id}", dependencies=[Depends(_auth)])
+    async def source_get(source_id: str) -> dict:
+        async with sm() as s:
+            row = (
+                await s.execute(
+                    text(
+                        "SELECT id, module, category, enabled, interval_minutes, "
+                        "last_success_at, error_streak "
+                        "FROM platform.source_registry WHERE id = :i"
+                    ),
+                    {"i": source_id},
+                )
+            ).mappings().first()
+            if not row:
+                raise HTTPException(status_code=404, detail="not found")
+            return dict(row)
+
     @app.patch("/api/platform/sources/{source_id}", dependencies=[Depends(_auth)])
     async def source_update(source_id: str, body: dict) -> dict:
         async with sm() as s:
@@ -175,6 +192,57 @@ def create_app() -> FastAPI:
                 )
             ).mappings().all()
             return {r["status"]: int(r["n"]) for r in rows}
+
+    @app.get("/api/platform/manhwa/config", dependencies=[Depends(_auth)])
+    async def manhwa_config() -> list[dict]:
+        async with sm() as s:
+            rows = (
+                await s.execute(
+                    text(
+                        "SELECT guild_id, channel_id, raw_channel_id, whitelist_channel_id, "
+                        "origin_filter, label, type_filter, updated_at "
+                        "FROM public.guild_settings ORDER BY guild_id"
+                    )
+                )
+            ).mappings().all()
+            return [dict(r) for r in rows]
+
+    @app.get("/api/platform/manhwa/health", dependencies=[Depends(_auth)])
+    async def manhwa_health() -> list[dict]:
+        async with sm() as s:
+            rows = (
+                await s.execute(
+                    text(
+                        "SELECT source, status, consecutive_failures, last_error, "
+                        "last_success_at, last_checked_at, response_time_ms "
+                        "FROM public.source_health ORDER BY source"
+                    )
+                )
+            ).mappings().all()
+            return [dict(r) for r in rows]
+
+    @app.patch("/api/platform/manhwa/config/{guild_id}", dependencies=[Depends(_auth)])
+    async def manhwa_config_update(guild_id: int, body: dict) -> dict:
+        sets: list[str] = []
+        params: dict = {"g": guild_id}
+        for col in ("raw_channel_id", "whitelist_channel_id", "channel_id"):
+            if col in body:
+                v = body[col]
+                v = v.strip() if isinstance(v, str) else v
+                sets.append(f"{col} = :{col}")
+                params[col] = int(v) if v else None
+        if not sets:
+            return {"guild_id": guild_id, "updated": False}
+        async with sm() as s:
+            await s.execute(
+                text(
+                    f"UPDATE public.guild_settings SET {', '.join(sets)}, "
+                    "updated_at = now() WHERE guild_id = :g"
+                ),
+                params,
+            )
+            await s.commit()
+        return {"guild_id": guild_id, "updated": True}
 
     return app
 

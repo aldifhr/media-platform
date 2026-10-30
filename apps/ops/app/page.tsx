@@ -1,6 +1,9 @@
+import ManhwaConfigPanel from "./ManhwaConfigPanel";
 import SourcesPanel from "./SourcesPanel";
 import {
   getGuilds,
+  getManhwaConfig,
+  getManhwaHealth,
   getOutboxStats,
   getRoutes,
   getSources,
@@ -20,24 +23,33 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
   );
 }
 
-export default async function Dashboard() {
-  let guilds: Awaited<ReturnType<typeof getGuilds>> = [];
-  let subs: Awaited<ReturnType<typeof getSubscriptions>> = [];
-  let routes: Awaited<ReturnType<typeof getRoutes>> = [];
-  let sources: Awaited<ReturnType<typeof getSources>> = [];
-  let stats: Record<string, number> = {};
-  let error: string | null = null;
+type Res<T> = { data: T | null; error: string | null };
+
+// Fetch independently so one failure never masks the others, and so a real
+// error (401/network) is shown as an error — never as a fake "empty" state.
+async function safe<T>(fn: () => Promise<T>): Promise<Res<T>> {
   try {
-    [guilds, subs, routes, sources, stats] = await Promise.all([
-      getGuilds(),
-      getSubscriptions(),
-      getRoutes(),
-      getSources(),
-      getOutboxStats(),
-    ]);
+    return { data: await fn(), error: null };
   } catch (e) {
-    error = e instanceof Error ? e.message : "admin API unreachable";
+    return { data: null, error: e instanceof Error ? e.message : String(e) };
   }
+}
+
+function Err({ error }: { error: string }) {
+  return <span className="font-mono text-xs text-red-400">fetch error: {error}</span>;
+}
+
+export default async function Dashboard() {
+  const [guildsR, subsR, routesR, sourcesR, statsR, mhCfgR, mhHealthR] = await Promise.all([
+    safe(getGuilds),
+    safe(getSubscriptions),
+    safe(getRoutes),
+    safe(getSources),
+    safe(getOutboxStats),
+    safe(getManhwaConfig),
+    safe(getManhwaHealth),
+  ]);
+  const stats = statsR.data || {};
 
   return (
     <main className="mx-auto max-w-5xl space-y-6 p-6">
@@ -46,31 +58,46 @@ export default async function Dashboard() {
         <span className="text-xs text-neutral-500">unified Discord bot dashboard</span>
       </header>
 
-      {error && (
-        <div className="rounded-lg border border-red-900 bg-red-950/40 px-4 py-3 text-sm text-red-300">
-          {error}
-        </div>
-      )}
-
       <Card title="Outbox">
-        <div className="flex gap-6 font-mono text-xs">
-          {Object.keys(stats).length === 0 && <span className="text-neutral-500">empty</span>}
-          {Object.entries(stats).map(([k, v]) => (
-            <span key={k}>
-              <span className="text-neutral-400">{k}</span>: <span className="text-neutral-100">{v}</span>
-            </span>
-          ))}
-        </div>
+        {statsR.error ? (
+          <Err error={statsR.error} />
+        ) : Object.keys(stats).length === 0 ? (
+          <span className="text-neutral-500">empty</span>
+        ) : (
+          <div className="flex gap-6 font-mono text-xs">
+            {Object.entries(stats).map(([k, v]) => (
+              <span key={k}>
+                <span className="text-neutral-400">{k}</span>: <span className="text-neutral-100">{v}</span>
+              </span>
+            ))}
+          </div>
+        )}
       </Card>
 
-      <SourcesPanel sources={sources} />
+      {sourcesR.error ? (
+        <Card title="Sources">
+          <Err error={sourcesR.error} />
+        </Card>
+      ) : (
+        <SourcesPanel sources={sourcesR.data || []} />
+      )}
+
+      {mhCfgR.error || mhHealthR.error ? (
+        <Card title="Manhwa bot config">
+          <Err error={mhCfgR.error || mhHealthR.error || ""} />
+        </Card>
+      ) : (
+        <ManhwaConfigPanel config={mhCfgR.data || []} health={mhHealthR.data || []} />
+      )}
 
       <Card title="Guilds">
-        {guilds.length === 0 ? (
+        {guildsR.error ? (
+          <Err error={guildsR.error} />
+        ) : !guildsR.data || guildsR.data.length === 0 ? (
           <span className="text-neutral-500">No guilds yet.</span>
         ) : (
           <ul className="space-y-1 font-mono text-xs">
-            {guilds.map((g) => (
+            {guildsR.data.map((g) => (
               <li key={g.id}>
                 {g.id} — {g.name || "(unnamed)"}
               </li>
@@ -80,11 +107,13 @@ export default async function Dashboard() {
       </Card>
 
       <Card title="Subscriptions">
-        {subs.length === 0 ? (
+        {subsR.error ? (
+          <Err error={subsR.error} />
+        ) : !subsR.data || subsR.data.length === 0 ? (
           <span className="text-neutral-500">No subscriptions configured.</span>
         ) : (
           <ul className="space-y-1 font-mono text-xs">
-            {subs.map((s) => (
+            {subsR.data.map((s) => (
               <li key={s.id}>
                 guild {s.guild_id} · {s.module}
                 {s.category ? `/${s.category}` : ""} → channel {s.channel_id}{" "}
@@ -98,11 +127,13 @@ export default async function Dashboard() {
       </Card>
 
       <Card title="Notification routes">
-        {routes.length === 0 ? (
+        {routesR.error ? (
+          <Err error={routesR.error} />
+        ) : !routesR.data || routesR.data.length === 0 ? (
           <span className="text-neutral-500">No routes configured.</span>
         ) : (
           <ul className="space-y-1 font-mono text-xs">
-            {routes.map((r) => (
+            {routesR.data.map((r) => (
               <li key={r.id}>
                 p{r.priority} · {r.module} · {r.event_type} →{" "}
                 {r.thread_id ? `thread ${r.thread_id}` : `channel ${r.channel_id}`}{" "}

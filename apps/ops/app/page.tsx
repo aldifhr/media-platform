@@ -1,3 +1,4 @@
+import LogoutButton from "./LogoutButton";
 import ManhwaConfigPanel from "./ManhwaConfigPanel";
 import SourcesPanel from "./SourcesPanel";
 import {
@@ -53,9 +54,12 @@ export default async function Dashboard() {
 
   return (
     <main className="mx-auto max-w-5xl space-y-6 p-6">
-      <header className="flex items-baseline justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight">media-platform · bot config</h1>
-        <span className="text-xs text-neutral-500">unified Discord bot dashboard</span>
+      <header className="flex items-center justify-between">
+        <div className="flex items-baseline gap-3">
+          <h1 className="text-2xl font-semibold tracking-tight">media-platform · bot config</h1>
+          <span className="text-xs text-neutral-500">unified Discord bot dashboard</span>
+        </div>
+        <LogoutButton />
       </header>
 
       <Card title="Outbox">

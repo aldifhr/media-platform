@@ -18,9 +18,9 @@ import asyncio
 import hashlib
 import re
 import xml.etree.ElementTree as ET
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
-from collections.abc import Callable
 from urllib.parse import urljoin, urlparse
 
 import httpx
@@ -92,20 +92,20 @@ _WHITESPACE = re.compile(r"\s+")
 # otherwise a process that ever runs a second loop (a test client, a reload)
 # silently fails every request until restart.
 _client: httpx.AsyncClient | None = None
-_client_loop: int | None = None
+_client_loop: asyncio.AbstractEventLoop | None = None
 
 
 def _http() -> httpx.AsyncClient:
     global _client, _client_loop
-    loop_id = id(asyncio.get_running_loop())
-    if _client is not None and (_client.is_closed or _client_loop != loop_id):
+    loop = asyncio.get_running_loop()
+    if _client is not None and (_client.is_closed or _client_loop is not loop):
         _client = None
         _client_loop = None
     if _client is None:
         _client = httpx.AsyncClient(
             timeout=HTTP_TIMEOUT, follow_redirects=True, headers={"User-Agent": USER_AGENT}
         )
-        _client_loop = loop_id
+        _client_loop = loop
     return _client
 
 

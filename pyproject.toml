@@ -18,6 +18,10 @@ dependencies = [
     "curl-cffi>=0.7",
     "fastapi>=0.115",
     "uvicorn[standard]>=0.30",
+    "psycopg2-binary>=2.9",
+    "orjson>=3.10",
+    "prometheus_client>=0.20",
+    "pillow>=10.0",
 ]
 
 # uv workspace members are wired per-phase as each package gains its own
@@ -34,6 +38,10 @@ dev = [
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+# Vendored manhwa backend (faithful copy from manhwa-scanner) keeps its own lint
+# state; platform-strict ruff applies to authored code (core/, apps/, modules/media,
+# tests/). Re-include manhwa subdirs as they are refactored onto core/.
+extend-exclude = ["modules/manhwa"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]

@@ -23,3 +23,7 @@ dist/
 
 # os
 .DS_Store
+
+# Runtime scraper state (seen markers, locks, health) — written by the
+# running services, never committed.
+data/

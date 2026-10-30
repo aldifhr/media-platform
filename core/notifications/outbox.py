@@ -25,6 +25,8 @@ def compute_backoff(attempt: int, base: float = 5.0, cap: float = 3600.0) -> flo
 
 class OutboxRepo:
     async def enqueue(self, session: AsyncSession, event: Event) -> None:
+        from datetime import datetime
+
         await session.execute(
             text(
                 """
@@ -41,7 +43,7 @@ class OutboxRepo:
                 "event_type": event.event_type,
                 "version": event.version,
                 "source": event.source,
-                "occurred_at": event.occurred_at,
+                "occurred_at": datetime.fromisoformat(event.occurred_at),
                 "payload": json.dumps(event.payload, ensure_ascii=False),
             },
         )

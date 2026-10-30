@@ -20,10 +20,20 @@ _engine = None
 _sessionmaker: async_sessionmaker[AsyncSession] | None = None
 
 
+def _async_url(url: str) -> str:
+    """Normalize a psycopg2/sync Postgres URL to the asyncpg async driver."""
+    for prefix in ("postgresql+psycopg2://", "postgresql://"):
+        if url.startswith(prefix):
+            return "postgresql+asyncpg://" + url[len(prefix) :]
+    return url
+
+
 def get_engine():
     global _engine
     if _engine is None:
-        _engine = create_async_engine(get_settings().database_url, pool_pre_ping=True, future=True)
+        _engine = create_async_engine(
+            _async_url(get_settings().database_url), pool_pre_ping=True, future=True
+        )
     return _engine
 
 

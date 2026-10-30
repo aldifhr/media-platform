@@ -39,11 +39,14 @@ Live checklist. Updated as phases complete. `✅` done · `🚧` in progress · 
 - [ ] outbound `deliver_*` arq jobs consumed here — Phase 4
 - [ ] slash-command handlers backed by domain data — Phase 5/6
 
-## Phase 4 — Notification engine ⬜
-Transactional outbox, event envelope, retry/backoff/jitter, DLQ, delivery history.
+## Phase 4 — Notification engine ✅ DONE
+- [x] routing (resolve_targets + resolve_thread, pure)
+- [x] engine (claim outbox -> resolve -> enqueue deliver -> history; enqueue-fail retries)
+- [x] deliver job (token-isolated, in discord-bot) + delivery history + delivery-worker wiring
+- [x] 40 tests green, ruff clean
 
-## Phase 5 — Media module (pahe) ⬜
-## Phase 6 — Manhwa module ⬜
+## Phase 5 — Manhwa module 🚧 IN PROGRESS (moved ahead of media per LO)
+## Phase 6 — Media module (pahe) ⬜ (after manhwa, per LO)
 ## Phase 7 — Database consolidation ⬜
 ## Phase 8 — API + frontend compatibility ⬜
 ## Phase 9 — Integration + regression tests ⬜

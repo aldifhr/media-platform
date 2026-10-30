@@ -33,6 +33,8 @@ media-platform/
 
 ## Phases
 
+**Execution order (LO, 2026-10-30):** Phase 4 → **manhwa** → media (pahe). Manhwa is primary and already on the Discord bot, so it is stood up first. (Phase 5/6 numbering below is the original audit order; execute manhwa before media.)
+
 **Phase 0 — Audit (THIS).** Done: 7 docs in `docs/audit/`. No code moved.
 
 **Phase 1 — Monorepo foundation.**

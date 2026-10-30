@@ -30,13 +30,32 @@ load_env()
 log = get_logger("scheduler")
 
 # Interval per source. pahe releases daily-ish, cheap poll.
-_SOURCES = ("pahe",)
+_SOURCES = ("pahe", "ovagames", "skidrow", "zeigames", "game3rb")
 _INTERVAL_S = {
     "pahe": env_int("PAHE_CHECK_INTERVAL_MINUTES", 30) * 60,
+    "ovagames": env_int("OVAGAMES_CHECK_INTERVAL_MINUTES", 30) * 60,
+    "skidrow": env_int("SKIDROW_CHECK_INTERVAL_MINUTES", 30) * 60,
+    "zeigames": env_int("ZEIGAMES_CHECK_INTERVAL_MINUTES", 30) * 60,
+    "game3rb": env_int("GAME3RB_CHECK_INTERVAL_MINUTES", 30) * 60,
 }
 _POLL_S = 30
 
 _task: asyncio.Task | None = None
+
+
+_NEW_SOURCE_RUNNERS = {
+    "ovagames": "modules.media.sources.ovagames.bot",
+    "skidrow": "modules.media.sources.skidrow.bot",
+    "zeigames": "modules.media.sources.zeigames.bot",
+    "game3rb": "modules.media.sources.game3rb.bot",
+}
+
+
+def _run_new_source(name: str) -> dict:
+    """Run a resurrected game source's scrape+notify cycle (sync, blocking)."""
+    import importlib
+    mod = importlib.import_module(_NEW_SOURCE_RUNNERS[name])
+    return mod.run_once(dry_run=False)
 
 
 async def _tick(name: str) -> None:
@@ -44,14 +63,17 @@ async def _tick(name: str) -> None:
     kill the loop, or every other source silently stops too."""
     started = time.time()
     try:
-        result = await run_check(dry_run=False)
+        if name == "pahe":
+            result = await run_check(dry_run=False)
+            try:
+                summary = json.loads(result["body"])
+            except (ValueError, TypeError):
+                summary = result["body"]
+        else:
+            summary = await asyncio.to_thread(_run_new_source, name)
     except Exception as exc:
         log.warning("%s crashed: %s: %s", name, type(exc).__name__, exc)
         return
-    try:
-        summary = json.loads(result["body"])
-    except (ValueError, TypeError):
-        summary = result["body"]
     log.info("%s ok in %.1fs -> %s", name, time.time() - started, summary)
 
 

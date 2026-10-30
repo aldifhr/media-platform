@@ -1,13 +1,15 @@
-"""Discord webhook notifier for skidrowreloaded game releases."""
+"""Discord notifier for skidrowreloaded game releases (bot API, manhwa-style embed)."""
 from __future__ import annotations
 
 import html
-import re
-
 import os
+import re
+from datetime import UTC, datetime
+
 from modules.media.common.discord import send_channel
 
 THREAD_ENV = "SKIDROW_DISCORD_THREAD"
+_LABEL = "Skidrow & Reloaded"
 
 _MIRROR_LABEL = re.compile(r"^www\d*\.")
 
@@ -32,22 +34,19 @@ def _format_mirrors(mirrors: list[dict]) -> str:
 def build_embed(item: dict, detail: dict | None = None) -> dict:
     title = _clean_title(item.get("title", ""))
     desc = ""
-    fields = [
-        {"name": "Source", "value": "Skidrow & Reloaded", "inline": True},
-    ]
-
+    fields = []
     if detail:
-        syn = detail.get("synopsis") or ""
-        if syn:
-            desc = syn[:350] + ("..." if len(syn) > 350 else "")
+        posted = detail.get("posted") or ""
+        if posted:
+            fields.append({"name": "🕐 Released", "value": posted, "inline": True})
         mirrors = detail.get("mirrors") or []
         dl = _format_mirrors(mirrors)
         if dl:
-            fields.append({"name": f"Download ({len(mirrors)})", "value": dl, "inline": False})
-        posted = detail.get("posted") or ""
-        if posted:
-            fields.append({"name": "Released", "value": posted, "inline": True})
-
+            fields.append({"name": f"📥 Download ({len(mirrors)})", "value": dl, "inline": False})
+        syn = detail.get("synopsis") or ""
+        if syn:
+            desc = syn[:350] + ("..." if len(syn) > 350 else "")
+    fields.append({"name": "🔗 Source", "value": f"`{_LABEL}`", "inline": True})
     cover = (detail.get("cover") if detail else None) or ""
     return {
         "title": title,
@@ -56,7 +55,8 @@ def build_embed(item: dict, detail: dict | None = None) -> dict:
         "thumbnail": {"url": cover} if cover else None,
         "fields": fields,
         "description": desc or None,
-        "footer": {"text": "Skidrow & Reloaded • PC release"},
+        "footer": {"text": f"Source: {_LABEL}"},
+        "timestamp": datetime.now(UTC).isoformat(),
     }
 
 

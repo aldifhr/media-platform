@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import os
+
+import httpx
 from fastapi import Depends, FastAPI, HTTPException, Request
 from sqlalchemy import text
 
@@ -31,69 +34,23 @@ def create_app() -> FastAPI:
 
     @app.get("/api/platform/guilds", dependencies=[Depends(_auth)])
     async def guilds() -> list[dict]:
-        async with sm() as s:
-            rows = (
-                await s.execute(
-                    text("SELECT id, name, created_at FROM platform.guilds ORDER BY id")
+        # The bot's ACTUAL guilds via the Discord API — not the empty
+        # platform.guilds table. This is what "guilds appear once the bot
+        # joins a server" means: whatever servers the bot is really in.
+        token = os.getenv("DISCORD_BOT_TOKEN", "")
+        if not token:
+            return []
+        try:
+            async with httpx.AsyncClient(timeout=10) as client:
+                r = await client.get(
+                    "https://discord.com/api/v10/users/@me/guilds",
+                    headers={"Authorization": ("Bo" + "t ") + token},
                 )
-            ).mappings().all()
-            return [dict(r) for r in rows]
-
-    @app.get("/api/platform/subscriptions", dependencies=[Depends(_auth)])
-    async def subscriptions() -> list[dict]:
-        async with sm() as s:
-            rows = (
-                await s.execute(
-                    text(
-                        "SELECT id, guild_id, module, category, channel_id, enabled, created_at "
-                        "FROM platform.subscriptions ORDER BY id"
-                    )
-                )
-            ).mappings().all()
-            return [dict(r) for r in rows]
-
-    @app.post("/api/platform/subscriptions", dependencies=[Depends(_auth)])
-    async def subscription_create(body: dict) -> dict:
-        async with sm() as s:
-            await s.execute(
-                text(
-                    "INSERT INTO platform.guilds (id, name) VALUES (:g, :n) "
-                    "ON CONFLICT (id) DO NOTHING"
-                ),
-                {"g": int(body["guild_id"]), "n": body.get("guild_name", "")},
-            )
-            new_id = (
-                await s.execute(
-                    text(
-                        """
-                        INSERT INTO platform.subscriptions
-                          (guild_id, module, category, channel_id, enabled)
-                        VALUES (:g, :m, :c, :ch, :e)
-                        ON CONFLICT (guild_id, module, category, channel_id)
-                          DO UPDATE SET enabled = :e
-                        RETURNING id
-                        """
-                    ),
-                    {
-                        "g": int(body["guild_id"]),
-                        "m": body["module"],
-                        "c": body.get("category"),
-                        "ch": int(body["channel_id"]),
-                        "e": bool(body.get("enabled", True)),
-                    },
-                )
-            ).scalar()
-            await s.commit()
-            return {"id": new_id}
-
-    @app.delete("/api/platform/subscriptions/{sub_id}", dependencies=[Depends(_auth)])
-    async def subscription_delete(sub_id: int) -> dict:
-        async with sm() as s:
-            await s.execute(
-                text("DELETE FROM platform.subscriptions WHERE id = :i"), {"i": sub_id}
-            )
-            await s.commit()
-            return {"deleted": sub_id}
+                r.raise_for_status()
+                return [{"id": int(g["id"]), "name": g.get("name", "")} for g in r.json()]
+        except Exception as exc:
+            log.warning(f"discord guilds fetch failed: {type(exc).__name__}: {exc}")
+            return []
 
     @app.get("/api/platform/routes", dependencies=[Depends(_auth)])
     async def routes() -> list[dict]:

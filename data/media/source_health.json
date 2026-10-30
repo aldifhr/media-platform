@@ -1,9 +1,9 @@
 {
   "pahe": {
     "status": "degraded",
-    "consecutive_failures": 5,
-    "disabled_until": "2026-10-30T19:20:08.100777+00:00",
-    "last_error": "auto-quarantined after 5 consecutive failures",
-    "last_checked_at": "2026-10-30T18:50:08.100777+00:00"
+    "consecutive_failures": 6,
+    "disabled_until": "2026-10-30T19:50:16.907741+00:00",
+    "last_error": "auto-quarantined after 6 consecutive failures",
+    "last_checked_at": "2026-10-30T19:20:16.907741+00:00"
   }
 }

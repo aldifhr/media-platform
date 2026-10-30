@@ -1,7 +1,5 @@
 import {
   Activity,
-  Bell,
-  Boxes,
   LayoutDashboard,
   Rss,
   Server,
@@ -9,20 +7,11 @@ import {
 } from "lucide-react";
 import LogoutButton from "./LogoutButton";
 import ManhwaConfigPanel from "./ManhwaConfigPanel";
-import RoutesTable from "./RoutesTable";
 import SourcesPanel, { SourcesError } from "./SourcesPanel";
 import { Reveal, StaggerGroup, StaggerItem } from "./components/motion";
 import { Stat } from "./components/stats";
-import { Badge, Card, CardHeader, EmptyState, ErrorState } from "./components/ui";
-import {
-  getGuilds,
-  getManhwaConfig,
-  getManhwaHealth,
-  getOutboxStats,
-  getRoutes,
-  getSources,
-  getSubscriptions,
-} from "@/lib/api";
+import { Card, CardHeader, ErrorState } from "./components/ui";
+import { getGuilds, getManhwaConfig, getManhwaHealth, getSources } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 
@@ -37,20 +26,15 @@ async function safe<T>(fn: () => Promise<T>): Promise<Res<T>> {
 }
 
 export default async function Dashboard() {
-  const [guildsR, subsR, routesR, sourcesR, statsR, mhCfgR, mhHealthR] = await Promise.all([
+  const [guildsR, sourcesR, mhCfgR, mhHealthR] = await Promise.all([
     safe(getGuilds),
-    safe(getSubscriptions),
-    safe(getRoutes),
     safe(getSources),
-    safe(getOutboxStats),
     safe(getManhwaConfig),
     safe(getManhwaHealth),
   ]);
 
   const sources = sourcesR.data || [];
-  const stats = statsR.data || {};
   const health = mhHealthR.data || [];
-  const outboxTotal = Object.values(stats).reduce((a, b) => a + b, 0);
   const sourcesUp = sources.filter((s) => s.enabled && s.error_streak === 0).length;
   const sourcesDown = sources.filter((s) => s.error_streak > 0).length;
   const healthBad = health.filter((h) => h.status.toUpperCase() !== "HEALTHY").length;
@@ -69,12 +53,11 @@ export default async function Dashboard() {
             Bot control center
           </h1>
           <p className="mt-1 max-w-xl text-sm text-[#8b8b93]">
-            Live status for sources, notifications, and Discord bot configuration across the
-            platform.
+            Live status for sources and Discord bot configuration across the platform.
           </p>
         </Reveal>
 
-        <StaggerGroup className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <StaggerGroup className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           <StaggerItem>
             <Stat
               label="Sources up"
@@ -101,15 +84,6 @@ export default async function Dashboard() {
               icon={<Users className="h-3 w-3" />}
             />
           </StaggerItem>
-          <StaggerItem>
-            <Stat
-              label="Outbox"
-              value={outboxTotal}
-              tone={statsR.error ? "red" : "neutral"}
-              hint={Object.keys(stats).length ? Object.keys(stats).join(" · ") : "empty"}
-              icon={<Bell className="h-3 w-3" />}
-            />
-          </StaggerItem>
         </StaggerGroup>
 
         <div className="mt-6 space-y-6">
@@ -132,86 +106,39 @@ export default async function Dashboard() {
             )}
           </Reveal>
 
-          <div className="grid gap-6 lg:grid-cols-2">
-            <Reveal delay={0.15}>
-              <Card>
-                <CardHeader
-                  icon={<Users className="h-4 w-4" />}
-                  title="Guilds"
-                  subtitle={`${guildsR.data?.length ?? 0} connected`}
-                />
-                {guildsR.error ? (
-                  <ErrorState error={guildsR.error} />
-                ) : !guildsR.data || guildsR.data.length === 0 ? (
-                  <EmptyState
-                    icon={<Users className="h-5 w-5" />}
-                    title="No guilds yet"
-                    hint="Guilds appear once the bot joins a server."
-                  />
-                ) : (
-                  <StaggerGroup className="divide-y divide-[#26262b]/60">
-                    {guildsR.data.map((g) => (
-                      <StaggerItem key={g.id}>
-                        <div className="flex items-center justify-between gap-3 px-5 py-3">
-                          <span className="truncate text-sm text-[#ededf0]">
-                            {g.name || <span className="text-[#5c5c64]">(unnamed)</span>}
-                          </span>
-                          <code className="shrink-0 font-mono text-[11px] text-[#5c5c64]">
-                            {g.id}
-                          </code>
-                        </div>
-                      </StaggerItem>
-                    ))}
-                  </StaggerGroup>
-                )}
-              </Card>
-            </Reveal>
-
-            <Reveal delay={0.2}>
-              <Card>
-                <CardHeader
-                  icon={<Boxes className="h-4 w-4" />}
-                  title="Subscriptions"
-                  subtitle={`${subsR.data?.length ?? 0} configured`}
-                />
-                {subsR.error ? (
-                  <ErrorState error={subsR.error} />
-                ) : !subsR.data || subsR.data.length === 0 ? (
-                  <EmptyState
-                    icon={<Boxes className="h-5 w-5" />}
-                    title="No subscriptions"
-                    hint="Subscribe a guild to a module to start delivering notifications."
-                  />
-                ) : (
-                  <StaggerGroup className="divide-y divide-[#26262b]/60">
-                    {subsR.data.map((s) => (
-                      <StaggerItem key={s.id}>
-                        <div className="flex items-center justify-between gap-3 px-5 py-3">
-                          <div className="flex min-w-0 items-center gap-2">
-                            <Badge tone={s.module === "manhwa" ? "violet" : "blue"}>
-                              {s.module}
-                            </Badge>
-                            {s.category && (
-                              <span className="truncate text-xs text-[#8b8b93]">{s.category}</span>
-                            )}
-                          </div>
-                          <div className="flex shrink-0 items-center gap-3 text-[11px] text-[#5c5c64]">
-                            <span className="font-mono">ch {s.channel_id}</span>
-                            <Badge tone={s.enabled ? "green" : "neutral"}>
-                              {s.enabled ? "on" : "off"}
-                            </Badge>
-                          </div>
-                        </div>
-                      </StaggerItem>
-                    ))}
-                  </StaggerGroup>
-                )}
-              </Card>
-            </Reveal>
-          </div>
-
-          <Reveal delay={0.25}>
-            <RoutesTable routes={routesR.data || []} error={routesR.error} />
+          <Reveal delay={0.15}>
+            <Card>
+              <CardHeader
+                icon={<Users className="h-4 w-4" />}
+                title="Guilds"
+                subtitle={`${guildsR.data?.length ?? 0} connected`}
+              />
+              {guildsR.error ? (
+                <ErrorState error={guildsR.error} />
+              ) : !guildsR.data || guildsR.data.length === 0 ? (
+                <div className="space-y-1 px-5 py-4">
+                  <span className="text-sm text-[#8b8b93]">No guilds yet.</span>
+                  <p className="text-xs text-[#5c5c64]">
+                    Guilds appear once the bot joins a server.
+                  </p>
+                </div>
+              ) : (
+                <StaggerGroup className="divide-y divide-[#26262b]/60">
+                  {guildsR.data.map((g) => (
+                    <StaggerItem key={g.id}>
+                      <div className="flex items-center justify-between gap-3 px-5 py-3">
+                        <span className="truncate text-sm text-[#ededf0]">
+                          {g.name || <span className="text-[#5c5c64]">(unnamed)</span>}
+                        </span>
+                        <code className="shrink-0 font-mono text-[11px] text-[#5c5c64]">
+                          {g.id}
+                        </code>
+                      </div>
+                    </StaggerItem>
+                  ))}
+                </StaggerGroup>
+              )}
+            </Card>
           </Reveal>
         </div>
       </main>

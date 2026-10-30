@@ -18,14 +18,6 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export type Guild = { id: number; name: string | null };
-export type Subscription = {
-  id: number;
-  guild_id: number;
-  module: string;
-  category: string | null;
-  channel_id: number;
-  enabled: boolean;
-};
 export type Route = {
   id: number;
   module: string;
@@ -47,7 +39,6 @@ export type Source = {
 };
 
 export const getGuilds = () => api<Guild[]>("/api/platform/guilds");
-export const getSubscriptions = () => api<Subscription[]>("/api/platform/subscriptions");
 export const getRoutes = () => api<Route[]>("/api/platform/routes");
 export const getSources = () => api<Source[]>("/api/platform/sources");
 export const getOutboxStats = () => api<Record<string, number>>("/api/platform/outbox/stats");

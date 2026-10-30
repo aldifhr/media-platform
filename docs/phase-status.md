@@ -46,6 +46,12 @@ Live checklist. Updated as phases complete. `✅` done · `🚧` in progress · 
 - [x] 40 tests green, ruff clean
 
 ## Phase 5 — Manhwa module 🚧 IN PROGRESS (moved ahead of media per LO)
+- [x] vendor full manhwa-scanner backend into modules/manhwa (142 files, imports rewired)
+- [x] API entrypoint (apps/api -> modules.manhwa.main:app)
+- [x] dedup-semantics tests (fcfs/text/rating)
+- [x] PROVEN running (isolated boot: API 200, /api/v1/interactive 401-verify, workers up)
+- [x] media-backend.aldifhr.my.id LIVE via nginx -> :3000 (TLS ok)
+- [ ] platform cutover: run platform-api (migrated) in prod, stop old scanner, repoint nginx
 ## Phase 6 — Media module (pahe) ⬜ (after manhwa, per LO)
 ## Phase 7 — Database consolidation ⬜
 ## Phase 8 — API + frontend compatibility ⬜

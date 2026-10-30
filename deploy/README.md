@@ -1,6 +1,9 @@
 # Deploy — media-platform
 
-Runtime model (ADR-006): **no Docker**. Backend runs as native systemd units on the VPS; frontends deploy on Vercel; Postgres + Redis run natively; Caddy reverse-proxies the API.
+Runtime model (ADR-006): **no Docker**. Backend runs as native systemd units on the VPS; frontends deploy on Vercel; Postgres + Redis run natively. **The VPS reverse proxy is nginx** (Caddy is installed but not running — deviation from the original plan; we match the box's existing infra).
+
+## Live now
+- `media-backend.aldifhr.my.id` → nginx → `127.0.0.1:3000` (running manhwa backend). Cert: Let's Encrypt (auto-renew). Config: `nginx/media-backend.conf`. `/api/v1/interactive` verifies (401 unsigned), `/openapi.json` 200.
 
 ## Layout
 - `systemd/platform-{api,discord,worker}.service` — unit templates (entrypoints land in Phase 2+).

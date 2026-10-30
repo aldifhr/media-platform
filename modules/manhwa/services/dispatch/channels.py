@@ -7,6 +7,7 @@ for backward compatibility with existing call sites and tests.
 from __future__ import annotations
 
 import json as _json
+import os
 import time
 import urllib.request
 
@@ -23,6 +24,21 @@ logger = get_logger("cron:dispatch")
 _DEAD_CHANNELS: dict[str, float] = {}
 _DEAD_CHANNEL_TTL = 6 * 3600.0
 _DEAD_CHANNEL_MAX_FAILS = 3
+
+
+def source_whitelist_map() -> dict[str, str]:
+    """Per-source whitelist channel overrides: {channel_id: source}.
+
+    Lets each source's whitelisted series announce on its own thread instead
+    of both sharing one whitelist channel. Read from
+    SHINIGAMI_WHITELIST_CHANNEL / IKIRU_WHITELIST_CHANNEL.
+    """
+    out: dict[str, str] = {}
+    for src in ("shinigami", "ikiru"):
+        ch = str(os.environ.get(f"{src.upper()}_WHITELIST_CHANNEL", "") or "").strip()
+        if ch:
+            out[ch] = src
+    return out
 
 
 def _set_feed_channel(guild_id: str, channel_id: str, feed: str) -> None:
@@ -106,6 +122,10 @@ def _load_channels() -> list[str]:
                     out.append(_wl)
             elif _legacy and _legacy not in out:
                 out.append(_legacy)
+        # Per-source whitelist channels (each source gets its own thread).
+        for _ch in source_whitelist_map():
+            if _ch not in out:
+                out.append(_ch)
         return _prune_dead_channels(out)
     except Exception:
         return _prune_dead_channels(out)

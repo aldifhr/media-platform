@@ -9,8 +9,11 @@ from __future__ import annotations
 import re
 
 from modules.manhwa.config import settings
-from modules.manhwa.services.dispatch.backfill import _split_send_backfill, backfill_dispatch_history
 from modules.manhwa.logger import get_logger
+from modules.manhwa.services.dispatch.backfill import (
+    _split_send_backfill,
+    backfill_dispatch_history,
+)
 from modules.manhwa.services.dispatch.guards import load_chapter_ceilings
 from modules.manhwa.services.dispatch.senders import (
     _flush_history,
@@ -19,8 +22,8 @@ from modules.manhwa.services.dispatch.senders import (
 from modules.manhwa.services.dispatch.state import (
     _BLOCKED,
     _DRY,
-    _RunState,
     _SENT,
+    _RunState,
 )
 from modules.manhwa.services.fcfs import fcfs_key_for_item
 from modules.manhwa.storage import dispatch as dispatch_store
@@ -79,7 +82,10 @@ def _load_sent_keys_global(title_keys: list[str] | None = None) -> set[str]:
             if fk:
                 out.add(str(fk))
     except Exception as e:
-        logger.warn("dispatch: sent_keys_global load failed — ceiling guard degraded", err=str(e)[:160])
+        logger.warn(
+            "dispatch: sent_keys_global load failed — ceiling guard degraded",
+            err=str(e)[:160],
+        )
     return out
 
 
@@ -114,7 +120,9 @@ def _load_legacy_pairs(to_send: list[dict]) -> set[tuple[str, str]]:
             if tkh and cth:
                 pairs.add((tkh, cth))
                 try:
-                    pairs.add((tkh, "%.10g" % float(cth)))
+                    # %.10g kept verbatim: switching to a format specifier is
+                    # an unsafe fix that can change the normalized chapter key.
+                    pairs.add((tkh, "%.10g" % float(cth)))  # noqa: UP031
                 except (ValueError, TypeError):
                     pass
     except Exception:
@@ -426,8 +434,10 @@ def dispatch(
     # same (title_key, source) rule so an item that arrived without the tag is
     # still routed correctly. See split_dispatch_targets().
     from modules.manhwa.cron.dispatch_mod import split_dispatch_targets
+    from modules.manhwa.services.dispatch.channels import source_whitelist_map
 
     raw_channels, _ = split_dispatch_targets(channel_ids)
+    src_wl_map = source_whitelist_map()
     # Raw announcements are opt-in: with no raw channel configured every channel
     # is a whitelist channel, which is the previous single-feed behaviour.
     # Otherwise a raw feed would start publishing on a deployment that never
@@ -455,6 +465,12 @@ def dispatch(
         # obviously symmetric — the inverted form silently routes every
         # whitelisted chapter to raw and every stray one to whitelist.
         _feed = [it for it in to_send if bool(it.get("subscribed")) == (not _is_raw_ch)]
+        # Per-source whitelist: a channel mapped to one source carries only
+        # that source's whitelisted items, so shinigami and ikiru each get
+        # their own thread instead of sharing one whitelist channel.
+        _src = src_wl_map.get(ch)
+        if _src and not _is_raw_ch:
+            _feed = [it for it in _feed if str(it.get("source") or "").strip().lower() == _src]
         if not _feed:
             logger.info(
                 "dispatch: feed empty",

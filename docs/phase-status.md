@@ -59,6 +59,14 @@ Live checklist. Updated as phases complete. `✅` done · `🚧` in progress · 
 - [x] 39 regression tests green; requests dep; ruff clean
 - [x] PROVEN running (isolated boot: /pahe 200, scheduler scrapes)
 - [x] CUTOVER DONE: platform-media(:3100) runs migrated pahe; pahe-scanner stopped+disabled; state migrated; all-scan.aldifhr.my.id live
+
+## Bot-config frontend (ADR-005) ✅ DONE (build verified)
+- [x] platform-admin API (apps/admin, FastAPI + core, bearer auth): guilds/subscriptions/routes/sources/outbox CRUD
+- [x] media-platform dashboard (apps/ops, Next.js 16 + Tailwind v4): renders config, source toggle (token server-side)
+- [x] platform schema applied + sources/modules seeded (ikiru, pahe, shinigami)
+- [x] notification engine PROVEN end-to-end (outbox -> engine -> arq deliver); engine runner (apps/worker) + delivery worker (apps/discord_bot/delivery_worker.py)
+- [x] frontend builds clean + renders live config (HTTP 200)
+- [ ] deploy admin API + dashboard (systemd/Vercel) + final pahe->engine wiring (needs unified bot in pahe channel)
 ## Phase 7 — Database consolidation ⬜
 ## Phase 8 — API + frontend compatibility ⬜
 ## Phase 9 — Integration + regression tests ⬜

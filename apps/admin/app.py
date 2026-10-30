@@ -99,9 +99,13 @@ def create_app() -> FastAPI:
             rows = (
                 await s.execute(
                     text(
-                        "SELECT id, module, category, enabled, interval_minutes, "
-                        "last_success_at, error_streak "
-                        "FROM platform.source_registry ORDER BY id"
+                        "SELECT r.id, r.module, r.category, r.enabled, "
+                        "r.interval_minutes, r.error_streak, "
+                        "COALESCE(h.last_success_at, r.last_success_at) "
+                        "AS last_success_at, h.status AS health_status "
+                        "FROM platform.source_registry r "
+                        "LEFT JOIN public.source_health h ON h.source = r.id "
+                        "ORDER BY r.id"
                     )
                 )
             ).mappings().all()
@@ -200,6 +204,36 @@ def create_app() -> FastAPI:
             )
             await s.commit()
         return {"guild_id": guild_id, "updated": True}
+
+    @app.get("/api/platform/manhwa/feeds", dependencies=[Depends(_auth)])
+    async def manhwa_feeds() -> dict:
+        """Manhwa feed routing: the DB-backed raw/legacy channels plus the
+        per-source whitelist threads, which are env-configured (one thread per
+        source instead of a single shared whitelist channel).
+        """
+        import os
+
+        def _e(k: str) -> str:
+            return (os.getenv(k, "") or "").strip()
+
+        async with sm() as s:
+            row = (
+                await s.execute(
+                    text(
+                        "SELECT guild_id, channel_id, raw_channel_id, "
+                        "whitelist_channel_id FROM public.guild_settings "
+                        "ORDER BY guild_id LIMIT 1"
+                    )
+                )
+            ).mappings().first()
+        return {
+            "guild_id": str(row["guild_id"]) if row else "",
+            "raw_channel": str(row["raw_channel_id"] or "") if row else "",
+            "legacy_channel": str(row["channel_id"] or "") if row else "",
+            "shared_whitelist": str(row["whitelist_channel_id"] or "") if row else "",
+            "shinigami_whitelist": _e("SHINIGAMI_WHITELIST_CHANNEL"),
+            "ikiru_whitelist": _e("IKIRU_WHITELIST_CHANNEL"),
+        }
 
     @app.get("/api/platform/media/config", dependencies=[Depends(_auth)])
     async def media_config() -> dict:

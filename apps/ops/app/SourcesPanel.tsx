@@ -102,12 +102,7 @@ export default function SourcesPanel({ sources }: { sources: Source[] }) {
                 >
                   <td className="px-5 py-3.5 font-mono text-[13px] text-fg">{s.id}</td>
                   <td className="px-3 py-3.5">
-                    <div className="flex items-center gap-2">
-                      <Badge tone={MODULE_TONE[s.module] || "neutral"}>{s.module}</Badge>
-                      {s.category && (
-                        <span className="text-xs text-muted">{s.category}</span>
-                      )}
-                    </div>
+                    <Badge tone={MODULE_TONE[s.module] || "neutral"}>{s.module}</Badge>
                   </td>
                   <td className="px-3 py-3.5 tabular-nums text-muted">
                     {s.interval_minutes}m

@@ -64,6 +64,16 @@ export type ManhwaHealth = {
 export const getManhwaConfig = () => api<ManhwaConfig[]>("/api/platform/manhwa/config");
 export const getManhwaHealth = () => api<ManhwaHealth[]>("/api/platform/manhwa/health");
 
+export type ManhwaFeeds = {
+  guild_id: string;
+  raw_channel: string;
+  legacy_channel: string;
+  shared_whitelist: string;
+  shinigami_whitelist: string;
+  ikiru_whitelist: string;
+};
+export const getManhwaFeeds = () => api<ManhwaFeeds>("/api/platform/manhwa/feeds");
+
 export type MediaConfig = {
   pahe: {
     thread_2026: string;

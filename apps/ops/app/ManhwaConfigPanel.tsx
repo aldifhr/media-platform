@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Activity, Loader2, Save, ServerCog } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import type { ManhwaConfig, ManhwaHealth } from "@/lib/api";
+import type { ManhwaConfig, ManhwaFeeds, ManhwaHealth } from "@/lib/api";
 import { useToast } from "./components/Toast";
 import { Badge, Card, CardHeader, Dot, EmptyState } from "./components/ui";
 import { cn } from "@/lib/utils";
@@ -19,44 +19,64 @@ function healthTone(status: string): "green" | "amber" | "red" {
   return "red";
 }
 
+function ReadOnlyField({ label, value }: { label: string; value?: string }) {
+  return (
+    <div className="block">
+      <span className="mb-1.5 block text-[11px] font-medium uppercase tracking-[0.1em] text-faint">
+        {label}
+      </span>
+      <code className="block rounded-lg border border-border bg-bg/40 px-2.5 py-1.5 font-mono text-xs text-fg">
+        {value || "—"}
+      </code>
+    </div>
+  );
+}
+
 function GuildForm({
   g,
+  feeds,
   busy,
   onSave,
 }: {
   g: ManhwaConfig;
+  feeds: ManhwaFeeds | null;
   busy: boolean;
-  onSave: (g: ManhwaConfig, raw: string, wl: string, legacy: string) => void;
+  onSave: (g: ManhwaConfig, raw: string, legacy: string) => void;
 }) {
   const [raw, setRaw] = useState(g.raw_channel_id || "");
-  const [wl, setWl] = useState(g.whitelist_channel_id || "");
   const [legacy, setLegacy] = useState(g.channel_id || "");
 
   return (
     <div className="grid gap-4 px-5 py-4 sm:grid-cols-[1fr_auto] sm:items-end">
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2">
         <label className="block">
           <span className="mb-1.5 block text-[11px] font-medium uppercase tracking-[0.1em] text-faint">
             Raw channel
           </span>
-          <input value={raw} onChange={(e) => setRaw(e.target.value)} className={INPUT} placeholder="—" />
-        </label>
-        <label className="block">
-          <span className="mb-1.5 block text-[11px] font-medium uppercase tracking-[0.1em] text-faint">
-            Whitelist channel
-          </span>
-          <input value={wl} onChange={(e) => setWl(e.target.value)} className={INPUT} placeholder="—" />
+          <input
+            value={raw}
+            onChange={(e) => setRaw(e.target.value)}
+            className={INPUT}
+            placeholder="—"
+          />
         </label>
         <label className="block">
           <span className="mb-1.5 block text-[11px] font-medium uppercase tracking-[0.1em] text-faint">
             Legacy channel
           </span>
-          <input value={legacy} onChange={(e) => setLegacy(e.target.value)} className={INPUT} placeholder="—" />
+          <input
+            value={legacy}
+            onChange={(e) => setLegacy(e.target.value)}
+            className={INPUT}
+            placeholder="—"
+          />
         </label>
+        <ReadOnlyField label="Shinigami whitelist" value={feeds?.shinigami_whitelist} />
+        <ReadOnlyField label="Ikiru whitelist" value={feeds?.ikiru_whitelist} />
       </div>
       <motion.button
         whileTap={{ scale: 0.97 }}
-        onClick={() => onSave(g, raw, wl, legacy)}
+        onClick={() => onSave(g, raw, legacy)}
         disabled={busy}
         className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-fg px-4 text-xs font-semibold text-bg transition-colors hover:bg-white disabled:opacity-50"
       >
@@ -70,21 +90,23 @@ function GuildForm({
 export default function ManhwaConfigPanel({
   config,
   health,
+  feeds,
 }: {
   config: ManhwaConfig[];
   health: ManhwaHealth[];
+  feeds: ManhwaFeeds | null;
 }) {
   const router = useRouter();
   const toast = useToast();
   const [busy, setBusy] = useState<string | null>(null);
 
-  async function save(g: ManhwaConfig, raw: string, wl: string, legacy: string) {
+  async function save(g: ManhwaConfig, raw: string, legacy: string) {
     setBusy(g.guild_id);
     try {
       const res = await fetch(`/api/manhwa/config/${g.guild_id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ raw_channel_id: raw, whitelist_channel_id: wl, channel_id: legacy }),
+        body: JSON.stringify({ raw_channel_id: raw, channel_id: legacy }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       toast.push("ok", `Saved channels for guild ${g.guild_id}`);
@@ -130,7 +152,7 @@ export default function ManhwaConfigPanel({
                   </code>
                   {g.label && <Badge tone="blue">{g.label}</Badge>}
                 </div>
-                <GuildForm g={g} busy={busy === g.guild_id} onSave={save} />
+                <GuildForm g={g} feeds={feeds} busy={busy === g.guild_id} onSave={save} />
               </motion.div>
             ))}
           </AnimatePresence>

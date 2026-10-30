@@ -9,6 +9,7 @@ import { Card, CardHeader, ErrorState, StatusPill } from "./components/ui";
 import {
   getGuilds,
   getManhwaConfig,
+  getManhwaFeeds,
   getManhwaHealth,
   getMediaConfig,
   getSources,
@@ -27,11 +28,12 @@ async function safe<T>(fn: () => Promise<T>): Promise<Res<T>> {
 }
 
 export default async function Dashboard() {
-  const [guildsR, sourcesR, mhCfgR, mhHealthR, mediaCfgR] = await Promise.all([
+  const [guildsR, sourcesR, mhCfgR, mhHealthR, mhFeedsR, mediaCfgR] = await Promise.all([
     safe(getGuilds),
     safe(getSources),
     safe(getManhwaConfig),
     safe(getManhwaHealth),
+    safe(getManhwaFeeds),
     safe(getMediaConfig),
   ]);
 
@@ -114,7 +116,11 @@ export default async function Dashboard() {
                 <ErrorState error={mhCfgR.error || mhHealthR.error || ""} />
               </Card>
             ) : (
-              <ManhwaConfigPanel config={mhCfgR.data || []} health={health} />
+              <ManhwaConfigPanel
+                config={mhCfgR.data || []}
+                health={health}
+                feeds={mhFeedsR.data}
+              />
             )}
           </Reveal>
 

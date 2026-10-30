@@ -62,6 +62,8 @@ async def _tick(name: str) -> None:
     """Run one source's check. Never raises — a failed source must not
     kill the loop, or every other source silently stops too."""
     started = time.time()
+    ok = False
+    error = ""
     try:
         if name == "pahe":
             result = await run_check(dry_run=False)
@@ -71,10 +73,20 @@ async def _tick(name: str) -> None:
                 summary = result["body"]
         else:
             summary = await asyncio.to_thread(_run_new_source, name)
+        ok = True
     except Exception as exc:
+        summary = None
+        error = f"{type(exc).__name__}: {exc}"
         log.warning("%s crashed: %s: %s", name, type(exc).__name__, exc)
-        return
-    log.info("%s ok in %.1fs -> %s", name, time.time() - started, summary)
+
+    # Record the outcome so the ops dashboard shows a real last-success
+    # timestamp and a health row per media source, instead of "never" for
+    # every one of them. Best-effort — never breaks the scrape loop.
+    from core.source_status import record_source_check
+
+    await record_source_check(name, ok, int((time.time() - started) * 1000), error)
+    if ok:
+        log.info("%s ok in %.1fs -> %s", name, time.time() - started, summary)
 
 
 async def _loop() -> None:

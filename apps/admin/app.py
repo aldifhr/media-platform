@@ -101,7 +101,8 @@ def create_app() -> FastAPI:
             rows = (
                 await s.execute(
                     text(
-                        "SELECT id, module, event_type, rule, priority, channel_id, thread_id, enabled "
+                        "SELECT id, module, event_type, rule, priority, "
+                        "channel_id, thread_id, enabled "
                         "FROM platform.notification_routes ORDER BY priority, id"
                     )
                 )
@@ -141,7 +142,8 @@ def create_app() -> FastAPI:
             rows = (
                 await s.execute(
                     text(
-                        "SELECT id, module, category, enabled, interval_minutes, last_success_at, error_streak "
+                        "SELECT id, module, category, enabled, interval_minutes, "
+                        "last_success_at, error_streak "
                         "FROM platform.source_registry ORDER BY id"
                     )
                 )
@@ -153,7 +155,8 @@ def create_app() -> FastAPI:
         async with sm() as s:
             await s.execute(
                 text(
-                    "UPDATE platform.source_registry SET enabled = :e, updated_at = now() WHERE id = :i"
+                    "UPDATE platform.source_registry SET enabled = :e, "
+                    "updated_at = now() WHERE id = :i"
                 ),
                 {"e": bool(body.get("enabled", True)), "i": source_id},
             )
@@ -165,7 +168,10 @@ def create_app() -> FastAPI:
         async with sm() as s:
             rows = (
                 await s.execute(
-                    text("SELECT status, count(*) AS n FROM platform.notification_outbox GROUP BY status")
+                    text(
+                    "SELECT status, count(*) AS n "
+                        "FROM platform.notification_outbox GROUP BY status"
+                    )
                 )
             ).mappings().all()
             return {r["status"]: int(r["n"]) for r in rows}

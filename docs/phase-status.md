@@ -51,7 +51,8 @@ Live checklist. Updated as phases complete. `✅` done · `🚧` in progress · 
 - [x] dedup-semantics tests (fcfs/text/rating)
 - [x] PROVEN running (isolated boot: API 200, /api/v1/interactive 401-verify, workers up)
 - [x] media-backend.aldifhr.my.id LIVE via nginx -> :3000 (TLS ok)
-- [ ] platform cutover: run platform-api (migrated) in prod, stop old scanner, repoint nginx
+- [x] CUTOVER DONE: platform-api(:3000)+platform-cron(:3001) run migrated manhwa; manhwa-api/cron stopped+disabled
+- [x] fixed: recent_chapters re-exports batch_insert_recent_chapters (from _ingest) — pipeline completes (status ok, HEALTHY)
 ## Phase 6 — Media module (pahe) ⬜ (after manhwa, per LO)
 ## Phase 7 — Database consolidation ⬜
 ## Phase 8 — API + frontend compatibility ⬜

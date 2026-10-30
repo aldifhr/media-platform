@@ -18,6 +18,9 @@ from modules.manhwa.storage.recent_chapters_sql import *  # noqa: F401,F403 — 
 from modules.manhwa.storage.recent_chapters_sql import (
     _row_to_item,
 )
+from modules.manhwa.storage.recent_chapters_ingest import (  # noqa: F401
+    batch_insert_recent_chapters,
+)
 
 logger = get_logger("storage:recent_chapters")
 

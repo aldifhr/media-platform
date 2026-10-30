@@ -188,12 +188,25 @@ def parse_detail(html: str) -> dict:
 
     soup = BeautifulSoup(html, "html.parser")
     synopsis = ""
-    box = soup.find("div", id="synopsis")
+    # The real synopsis lives in div#drama-synopsis (the hero block);
+    # div#synopsis is the older layout.
+    box = soup.find("div", id="drama-synopsis") or soup.find("div", id="synopsis")
     if box:
         p = box.find("p")
         if p:
+            # The leading <strong> is the SEO prefix ("Nodrakor Download Drama
+            # Korea <title> Subtitle Indonesia"), not synopsis text.
+            lead = p.find("strong")
+            if lead:
+                lead.extract()
             synopsis = re.sub(r"\s+", " ", p.get_text(" ", strip=True)).strip()
-            synopsis = re.sub(r"^Nodrakor Download Drama Korea [^-]+-\s*", "", synopsis)
+            synopsis = re.sub(r"^[-–—:\s]+", "", synopsis)
+            if synopsis.lower().startswith("nodrakor"):
+                m = re.match(
+                    r"^.*?Subtitle Indonesia\s*[-–—]\s*", synopsis, flags=re.I | re.S
+                )
+                if m:
+                    synopsis = synopsis[m.end():].strip()
     if not synopsis:
         meta = soup.find("meta", attrs={"property": "og:description"})
         if meta:

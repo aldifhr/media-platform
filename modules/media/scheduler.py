@@ -30,12 +30,11 @@ load_env()
 log = get_logger("scheduler")
 
 # Interval per source. pahe releases daily-ish, cheap poll.
-_SOURCES = ("pahe", "ovagames", "skidrow", "zeigames", "game3rb")
+_SOURCES = ("pahe", "ovagames", "skidrow", "game3rb")
 _INTERVAL_S = {
     "pahe": env_int("PAHE_CHECK_INTERVAL_MINUTES", 30) * 60,
     "ovagames": env_int("OVAGAMES_CHECK_INTERVAL_MINUTES", 30) * 60,
     "skidrow": env_int("SKIDROW_CHECK_INTERVAL_MINUTES", 30) * 60,
-    "zeigames": env_int("ZEIGAMES_CHECK_INTERVAL_MINUTES", 30) * 60,
     "game3rb": env_int("GAME3RB_CHECK_INTERVAL_MINUTES", 30) * 60,
 }
 _POLL_S = 30
@@ -46,7 +45,6 @@ _task: asyncio.Task | None = None
 _NEW_SOURCE_RUNNERS = {
     "ovagames": "modules.media.sources.ovagames.bot",
     "skidrow": "modules.media.sources.skidrow.bot",
-    "zeigames": "modules.media.sources.zeigames.bot",
     "game3rb": "modules.media.sources.game3rb.bot",
 }
 

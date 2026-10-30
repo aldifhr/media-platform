@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import argparse
-import datetime as dt
 import os
 import sys
 import time

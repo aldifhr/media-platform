@@ -9,7 +9,7 @@ import os
 
 from modules.media.common.env import env_int
 from modules.media.common.state import State
-from modules.media.common.translate_en import clean_ru_title, translate_ru_to_en
+from modules.media.common.translate_en import clean_dl_label, clean_ru_title, translate_ru_to_en
 import modules.media.sources.onlinefix.notifier as notifier
 import modules.media.sources.onlinefix.scraper as scraper
 
@@ -28,6 +28,7 @@ def _enrich(it: dict) -> None:
     it["en_title"] = translate_ru_to_en(clean_ru_title(it["title"])) or it["title"]
     raw = det.get("description", "")
     it["en_desc"] = translate_ru_to_en(raw[:_DESC_CHARS]) if raw else ""
+    it["downloads"] = [{"label": clean_dl_label(d["label"]), "url": d["url"]} for d in det.get("downloads", [])]
 
 
 def run_once(dry_run: bool = False) -> dict:

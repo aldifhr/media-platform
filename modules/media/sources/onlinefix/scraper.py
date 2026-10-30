@@ -50,12 +50,23 @@ def parse_homepage(html: str) -> list[dict]:
 
 
 def parse_detail(html: str) -> dict:
-    """Return {description} from the game page's .full-story block."""
+    """Return {description, downloads} from the game page."""
     from bs4 import BeautifulSoup
     soup = BeautifulSoup(html, "html.parser")
     el = soup.select_one(".full-story") or soup.select_one(".story")
     desc = el.get_text(" ", strip=True) if el else ""
-    return {"description": desc}
+    return {"description": desc, "downloads": _extract_downloads(soup)}
+
+
+def _extract_downloads(soup) -> list[dict]:
+    import re
+    out: list[dict] = []
+    for a in soup.find_all("a", href=True):
+        href = a["href"]
+        if "/ext/" in href:
+            label = re.sub(r"^\s*скачать\s+", "", a.get_text(strip=True), flags=re.I).strip() or "Download"
+            out.append({"label": label, "url": href})
+    return out
 
 
 def parse_posted(raw: str):

@@ -8,6 +8,16 @@ from modules.media.common.discord import send_channel
 THREAD_ENV = "FREETP_DISCORD_THREAD"
 
 
+def _format_downloads(downloads: list[dict]) -> str:
+    lines = []
+    for d in downloads[:10]:
+        label = (d.get("label") or "Download")[:60]
+        url = d.get("url", "")
+        if url:
+            lines.append(f"• [{label}]({url})")
+    return "\n".join(lines)[:1024]
+
+
 def build_embed(item: dict) -> dict:
     title = (item.get("en_title") or item.get("title", ""))[:256]
     desc = ""
@@ -15,6 +25,10 @@ def build_embed(item: dict) -> dict:
     syn = item.get("en_desc") or ""
     if syn:
         desc = syn[:350] + ("..." if len(syn) > 350 else "")
+    downloads = item.get("downloads") or []
+    dl = _format_downloads(downloads)
+    if dl:
+        fields.append({"name": f"Download ({len(downloads)})", "value": dl, "inline": False})
     cover = item.get("cover") or ""
     return {
         "title": title,

@@ -95,3 +95,13 @@ def clean_ru_title(title: str) -> str:
     for pat in _BOILERPLATE:
         t = re.sub(pat, "", t, flags=re.I)
     return t.strip() or (title or "").strip()
+
+
+def clean_dl_label(text: str) -> str:
+    """Normalise a download anchor label to a short English tag."""
+    label = re.sub(r"^\s*скачать\s+", "", text or "", flags=re.I).strip()
+    if not label:
+        return "Download"
+    if re.search(r"\.(torrent|exe|zip|rar|7z|dmg)", label, re.I):
+        return label[:60]
+    return (translate_ru_to_en(label) or label)[:60]

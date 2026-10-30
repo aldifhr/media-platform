@@ -112,7 +112,6 @@ export default async function Dashboard() {
         </div>
 
         <footer className="mt-16 flex items-center justify-between border-t border-border pt-5 text-[11px] text-faint">
-          <span>media-platform · ops console</span>
           <span className="font-mono">
             {sources.length} sources · {guildsR.data?.length ?? 0} guilds
           </span>

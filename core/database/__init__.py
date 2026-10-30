@@ -30,7 +30,9 @@ def get_engine():
 def get_sessionmaker() -> async_sessionmaker[AsyncSession]:
     global _sessionmaker
     if _sessionmaker is None:
-        _sessionmaker = async_sessionmaker(get_engine(), expire_on_commit=False, class_=AsyncSession)
+        _sessionmaker = async_sessionmaker(
+            get_engine(), expire_on_commit=False, class_=AsyncSession
+        )
     return _sessionmaker
 
 

@@ -14,8 +14,8 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Callable
 from datetime import UTC, datetime
-from typing import Any
 from email.utils import parsedate_to_datetime
+from typing import Any
 
 from modules.media.common.discord import asend_channel
 from modules.media.common.env import env_str, load_env
@@ -195,7 +195,6 @@ async def send_notification(post) -> bool:
         [embed],
         token_env="PAHE_DISCORD_TOKEN",
         channel_env="PAHE_DISCORD_CHANNEL",
-        content=post.title,
         channel_id=thread_id,
     )
     if not sent:

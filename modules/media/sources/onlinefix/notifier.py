@@ -1,0 +1,35 @@
+"""online-fix.me Discord notifier (bot API, per-source thread)."""
+from __future__ import annotations
+
+import os
+
+from modules.media.common.discord import send_channel
+
+THREAD_ENV = "ONLINEFIX_DISCORD_THREAD"
+
+
+def build_embed(item: dict) -> dict:
+    embed = {
+        "title": item.get("title", "")[:256],
+        "url": item.get("url", ""),
+        "color": 0xf59e0b,
+        "footer": {"text": "Online-Fix • game fix"},
+    }
+    if item.get("cover"):
+        embed["image"] = {"url": item["cover"]}
+    return embed
+
+
+def send(items: list[dict], dry_run: bool = False) -> int:
+    if not items:
+        return 0
+    embeds = [build_embed(it) for it in items]
+    if dry_run:
+        for it in items:
+            print(f"[online-fix][dry-run] WOULD notify: {it['title']}")
+        return len(items)
+    thread = os.getenv(THREAD_ENV, "")
+    if not thread:
+        print("[online-fix] no thread configured (ONLINEFIX_DISCORD_THREAD); skipping")
+        return 0
+    return send_channel(embeds, token_env="DISCORD_BOT_TOKEN", channel_id=thread)

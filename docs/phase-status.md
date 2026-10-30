@@ -19,7 +19,7 @@ Live checklist. Updated as phases complete. `✅` done · `🚧` in progress · 
 - [x] smoke test green (4/4) + ruff clean
 - [x] initial commit
 
-## Phase 2 — Shared core infra ⬜
+## Phase 2 — Shared core infra 🚧 IN PROGRESS
 core/config, database, cache, queue (arq), scheduler, events, notifications, discord, plugins, Source Registry.
 
 ## Phase 3 — Discord bot process ⬜

@@ -1,11 +1,18 @@
-import { Activity, Rss, ServerCog, Users } from "lucide-react";
+import { Activity, Rss, Server, ServerCog, Users } from "lucide-react";
 import LogoutButton from "./LogoutButton";
 import ManhwaConfigPanel from "./ManhwaConfigPanel";
+import MediaConfigPanel from "./MediaConfigPanel";
 import SourcesPanel, { SourcesError } from "./SourcesPanel";
 import { Reveal, StaggerGroup, StaggerItem } from "./components/motion";
 import { Stat } from "./components/stats";
 import { Card, CardHeader, ErrorState, StatusPill } from "./components/ui";
-import { getGuilds, getManhwaConfig, getManhwaHealth, getSources } from "@/lib/api";
+import {
+  getGuilds,
+  getManhwaConfig,
+  getManhwaHealth,
+  getMediaConfig,
+  getSources,
+} from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 
@@ -20,11 +27,12 @@ async function safe<T>(fn: () => Promise<T>): Promise<Res<T>> {
 }
 
 export default async function Dashboard() {
-  const [guildsR, sourcesR, mhCfgR, mhHealthR] = await Promise.all([
+  const [guildsR, sourcesR, mhCfgR, mhHealthR, mediaCfgR] = await Promise.all([
     safe(getGuilds),
     safe(getSources),
     safe(getManhwaConfig),
     safe(getManhwaHealth),
+    safe(getMediaConfig),
   ]);
 
   const sources = sourcesR.data || [];
@@ -107,6 +115,21 @@ export default async function Dashboard() {
               </Card>
             ) : (
               <ManhwaConfigPanel config={mhCfgR.data || []} health={health} />
+            )}
+          </Reveal>
+
+          <Reveal delay={0.15}>
+            {mediaCfgR.error ? (
+              <Card>
+                <CardHeader
+                  icon={<Server className="h-4 w-4" />}
+                  title="Media delivery"
+                  subtitle="Discord threads per media source"
+                />
+                <ErrorState error={mediaCfgR.error} />
+              </Card>
+            ) : (
+              <MediaConfigPanel config={mediaCfgR.data} />
             )}
           </Reveal>
         </div>

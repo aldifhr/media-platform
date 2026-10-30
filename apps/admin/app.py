@@ -201,6 +201,33 @@ def create_app() -> FastAPI:
             await s.commit()
         return {"guild_id": guild_id, "updated": True}
 
+    @app.get("/api/platform/media/config", dependencies=[Depends(_auth)])
+    async def media_config() -> dict:
+        """Discord delivery targets for the media sources, read from the deploy
+        env. The media module is env-configured (one thread per source), unlike
+        the manhwa feeds which live in guild_settings rows.
+        """
+        import os
+
+        def _e(k: str) -> str:
+            return (os.getenv(k, "") or "").strip()
+
+        return {
+            "pahe": {
+                "thread_2026": _e("PAHE_THREAD_2026"),
+                "thread_2025": _e("PAHE_THREAD_2025"),
+                "thread_horror": _e("PAHE_THREAD_HORROR"),
+                "fallback_channel": _e("PAHE_DISCORD_CHANNEL"),
+            },
+            "ovagames": {"thread": _e("OVAGAMES_DISCORD_THREAD")},
+            "skidrow": {"thread": _e("SKIDROW_DISCORD_THREAD")},
+            "game3rb": {"thread": _e("GAME3RB_DISCORD_THREAD")},
+            "drakorasia": {
+                "korea": _e("DRAKORASIA_KOREA"),
+                "china": _e("DRAKORASIA_CHINA"),
+            },
+        }
+
     return app
 
 

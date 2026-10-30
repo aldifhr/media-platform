@@ -63,3 +63,17 @@ export type ManhwaHealth = {
 };
 export const getManhwaConfig = () => api<ManhwaConfig[]>("/api/platform/manhwa/config");
 export const getManhwaHealth = () => api<ManhwaHealth[]>("/api/platform/manhwa/health");
+
+export type MediaConfig = {
+  pahe: {
+    thread_2026: string;
+    thread_2025: string;
+    thread_horror: string;
+    fallback_channel: string;
+  };
+  ovagames: { thread: string };
+  skidrow: { thread: string };
+  game3rb: { thread: string };
+  drakorasia: { korea: string; china: string };
+};
+export const getMediaConfig = () => api<MediaConfig>("/api/platform/media/config");

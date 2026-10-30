@@ -11,7 +11,7 @@ export function Card({
   return (
     <section
       className={cn(
-        "overflow-hidden rounded-2xl border border-[#26262b] bg-[#111113]/80 shadow-[0_1px_0_0_rgba(255,255,255,0.03)_inset,0_20px_40px_-24px_rgba(0,0,0,0.8)] backdrop-blur-sm",
+        "overflow-hidden rounded-2xl border border-border bg-surface/80 shadow-[0_1px_0_0_rgba(255,255,255,0.03)_inset,0_20px_40px_-24px_rgba(0,0,0,0.8)] backdrop-blur-sm",
         className,
       )}
       {...props}
@@ -37,21 +37,19 @@ export function CardHeader({
   return (
     <header
       className={cn(
-        "flex items-center justify-between gap-4 border-b border-[#26262b] px-5 py-3.5",
+        "flex items-center justify-between gap-4 border-b border-border px-5 py-4",
         className,
       )}
     >
       <div className="flex min-w-0 items-center gap-3">
         {icon && (
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[#26262b] bg-[#17171a] text-[#8b8b93]">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border bg-surface-2 text-muted">
             {icon}
           </span>
         )}
         <div className="min-w-0">
-          <h2 className="truncate text-sm font-semibold text-[#ededf0]">{title}</h2>
-          {subtitle && (
-            <p className="mt-0.5 truncate text-xs text-[#8b8b93]">{subtitle}</p>
-          )}
+          <h2 className="truncate text-[13px] font-semibold tracking-tight text-fg">{title}</h2>
+          {subtitle && <p className="mt-0.5 truncate text-xs text-muted">{subtitle}</p>}
         </div>
       </div>
       {action}
@@ -66,7 +64,7 @@ const badge = cva(
   {
     variants: {
       tone: {
-        neutral: "bg-[#17171a] text-[#8b8b93] ring-[#26262b]",
+        neutral: "bg-surface-2 text-muted ring-border",
         green: "bg-emerald-500/10 text-emerald-300 ring-emerald-500/25",
         amber: "bg-amber-500/10 text-amber-300 ring-amber-500/25",
         red: "bg-red-500/10 text-red-300 ring-red-500/25",
@@ -95,7 +93,7 @@ export function Badge({
 /* ------------------------------------------------------------------- Dot */
 
 const DOT: Record<Tone, string> = {
-  neutral: "bg-[#5c5c64]",
+  neutral: "bg-faint",
   green: "bg-emerald-400",
   amber: "bg-amber-400",
   red: "bg-red-400",
@@ -139,16 +137,16 @@ export function EmptyState({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-2 px-6 py-12 text-center">
-      <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-dashed border-[#33333a] text-[#5c5c64]">
+    <div className="flex flex-col items-center justify-center gap-2.5 px-6 py-14 text-center">
+      <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-dashed border-border-strong text-faint">
         {icon ?? (
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
             <path d="M3 7h18M3 12h18M3 17h10" strokeLinecap="round" />
           </svg>
         )}
       </div>
-      <p className="text-sm font-medium text-[#ededf0]">{title}</p>
-      {hint && <p className="max-w-xs text-xs text-[#8b8b93]">{hint}</p>}
+      <p className="text-sm font-medium text-fg">{title}</p>
+      {hint && <p className="max-w-xs text-xs leading-relaxed text-muted">{hint}</p>}
       {action}
     </div>
   );
@@ -167,5 +165,16 @@ export function ErrorState({ error }: { error: string }) {
         <p className="mt-0.5 break-words font-mono text-[11px] text-red-400/70">{error}</p>
       </div>
     </div>
+  );
+}
+
+/* ------------------------------------------------------------ StatusPill */
+
+export function StatusPill({ healthy }: { healthy: boolean }) {
+  return (
+    <span className="hidden items-center gap-2 rounded-full border border-border bg-surface/60 px-2.5 py-1 text-[11px] font-medium text-muted sm:inline-flex">
+      <Dot tone={healthy ? "green" : "amber"} pulse={!healthy} />
+      {healthy ? "All systems healthy" : "Attention needed"}
+    </span>
   );
 }

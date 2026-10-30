@@ -75,7 +75,7 @@ export default function SourcesPanel({ sources }: { sources: Source[] }) {
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-sm">
             <thead>
-              <tr className="border-b border-[#26262b] text-left text-[11px] uppercase tracking-wider text-[#5c5c64]">
+              <tr className="border-b border-border text-left text-[11px] uppercase tracking-[0.1em] text-faint">
                 <th className="px-5 py-2.5 font-medium">Source</th>
                 <th className="px-3 py-2.5 font-medium">Module</th>
                 <th className="px-3 py-2.5 font-medium">Interval</th>
@@ -88,7 +88,7 @@ export default function SourcesPanel({ sources }: { sources: Source[] }) {
               initial="hidden"
               animate="show"
               variants={{ hidden: {}, show: { transition: { staggerChildren: 0.05 } } }}
-              className="divide-y divide-[#26262b]/60"
+              className="divide-y divide-border/60"
             >
               {sources.map((s) => (
                 <motion.tr
@@ -100,27 +100,27 @@ export default function SourcesPanel({ sources }: { sources: Source[] }) {
                   whileHover={{ backgroundColor: "rgba(255,255,255,0.02)" }}
                   className="transition-colors"
                 >
-                  <td className="px-5 py-3 font-mono text-[13px] text-[#ededf0]">{s.id}</td>
-                  <td className="px-3 py-3">
+                  <td className="px-5 py-3.5 font-mono text-[13px] text-fg">{s.id}</td>
+                  <td className="px-3 py-3.5">
                     <div className="flex items-center gap-2">
                       <Badge tone={MODULE_TONE[s.module] || "neutral"}>{s.module}</Badge>
                       {s.category && (
-                        <span className="text-xs text-[#8b8b93]">{s.category}</span>
+                        <span className="text-xs text-muted">{s.category}</span>
                       )}
                     </div>
                   </td>
-                  <td className="px-3 py-3 tabular-nums text-[#8b8b93]">
+                  <td className="px-3 py-3.5 tabular-nums text-muted">
                     {s.interval_minutes}m
                   </td>
-                  <td className="px-3 py-3 text-[#8b8b93]">{relTime(s.last_success_at)}</td>
-                  <td className="px-3 py-3">
+                  <td className="px-3 py-3.5 text-muted">{relTime(s.last_success_at)}</td>
+                  <td className="px-3 py-3.5">
                     {s.error_streak > 0 ? (
                       <Badge tone="amber">{s.error_streak}</Badge>
                     ) : (
-                      <span className="text-[#5c5c64]">—</span>
+                      <span className="text-faint">—</span>
                     )}
                   </td>
-                  <td className="px-5 py-3">
+                  <td className="px-5 py-3.5">
                     <div className="flex justify-end">
                       <Toggle
                         checked={s.enabled}

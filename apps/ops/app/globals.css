@@ -1,6 +1,9 @@
 @import "tailwindcss";
 
 @theme {
+  --font-sans: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-mono), ui-monospace, "SFMono-Regular", monospace;
+
   --color-bg: #0a0a0b;
   --color-surface: #111113;
   --color-surface-2: #17171a;
@@ -19,6 +22,21 @@
 
 html {
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+}
+
+code,
+kbd,
+pre,
+.font-mono {
+  font-variant-ligatures: none;
+}
+
+:focus-visible {
+  outline: 2px solid rgba(52, 211, 153, 0.5);
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 
 body {

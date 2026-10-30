@@ -5,8 +5,8 @@ synopsis, cover image, and download link.
 """
 from __future__ import annotations
 
-import re
 import datetime as dt
+import re
 
 from modules.media.common.http import simple_get
 
@@ -14,7 +14,10 @@ BASE = "https://game3rb.com"
 CATEGORY_URL = BASE + "/category/games-online/"
 
 
-UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+UA = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+)
 
 
 def fetch_category_page(page: int = 1) -> str:
@@ -45,7 +48,10 @@ def parse_category_page(html: str) -> list[dict]:
         slug = href.rstrip("/").rsplit("/", 1)[-1]
         if not slug or len(slug) < 5:
             continue
-        if any(x in slug for x in ("contact-us", "dmca", "donate", "deleted-games", "how-to-download", "read-before-download")):
+        if any(x in slug for x in (
+            "contact-us", "dmca", "donate", "deleted-games",
+            "how-to-download", "read-before-download",
+        )):
             continue
         if slug in seen:
             continue
@@ -95,6 +101,11 @@ def parse_detail(html: str) -> dict:
     if og_desc:
         synopsis = og_desc.get("content", "")
     if not synopsis:
+        # Game description snippet (the actual game blurb on the page)
+        snippet = soup.find("div", class_="game_description_snippet")
+        if snippet:
+            synopsis = re.sub(r"\s+", " ", snippet.get_text(" ", strip=True)).strip()
+    if not synopsis:
         # Try to find the summary text from the post content
         summary_div = soup.find("div", class_="summaryy")
         if summary_div:
@@ -102,14 +113,19 @@ def parse_detail(html: str) -> dict:
             text = summary_div.get_text(" ", strip=True)
             # Try to find RELEASE NAME, DEVELOPER, GENRE, etc.
             details = {}
-            for field in ["RELEASE NAME", "RELEASE SIZE", "DEVELOPER", "PUBLISHER", "RELEASE DATE", "GENRE", "ALL REVIEWS"]:
+            for field in [
+                "RELEASE NAME", "RELEASE SIZE", "DEVELOPER", "PUBLISHER",
+                "RELEASE DATE", "GENRE", "ALL REVIEWS",
+            ]:
                 m = re.search(rf"{field}:\s*([^\n]+)", text)
                 if m:
                     details[field] = m.group(1).strip()
             if details:
                 synopsis = " | ".join(f"{k}: {v}" for k, v in details.items())
     if not synopsis:
-        post_body = soup.find("div", class_="entry-content") or soup.find("div", class_="post-content")
+        post_body = soup.find("div", class_="entry-content") or soup.find(
+            "div", class_="post-content"
+        )
         if post_body:
             p = post_body.find("p")
             if p:
@@ -152,7 +168,7 @@ def parse_posted(ts: str):
         pass
     for fmt in ("%B %d, %Y", "%Y-%m-%d"):
         try:
-            return dt.datetime.strptime(ts, fmt).replace(tzinfo=dt.timezone.utc)
+            return dt.datetime.strptime(ts, fmt).replace(tzinfo=dt.UTC)
         except Exception:
             continue
     return None

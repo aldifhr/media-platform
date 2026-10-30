@@ -1,0 +1,20 @@
+[Unit]
+Description=media-platform API (FastAPI)
+After=network.target postgresql.service redis-server.service
+Wants=postgresql.service redis-server.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/projects/media-platform
+EnvironmentFile=/root/projects/media-platform/.env
+# Entrypoint lands in Phase 2+ (apps.api). Until then this unit is a template.
+ExecStart=/root/.local/bin/uv run python -m apps.api
+Restart=on-failure
+RestartSec=3
+# Hardening (adjust as needed)
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

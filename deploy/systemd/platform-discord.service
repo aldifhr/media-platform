@@ -1,0 +1,18 @@
+[Unit]
+Description=media-platform Discord bot (interactions + delivery)
+After=network.target platform-api.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/projects/media-platform
+EnvironmentFile=/root/projects/media-platform/.env
+# ONLY this process reads DISCORD_BOT_TOKEN. Entrypoint lands in Phase 3.
+ExecStart=/root/.local/bin/uv run python -m apps.discord_bot
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

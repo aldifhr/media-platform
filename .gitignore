@@ -1,0 +1,25 @@
+# python
+__pycache__/
+*.pyc
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+
+# env / secrets
+.env
+.env.*
+!.env.example
+
+# node
+node_modules/
+.next/
+.vercel/
+dist/
+
+# logs
+*.log
+
+# os
+.DS_Store

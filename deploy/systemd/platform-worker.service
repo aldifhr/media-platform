@@ -1,0 +1,19 @@
+[Unit]
+Description=media-platform Worker (scheduler + scrapers + notifications)
+After=network.target postgresql.service redis-server.service
+Wants=postgresql.service redis-server.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/projects/media-platform
+EnvironmentFile=/root/projects/media-platform/.env
+# NO Discord token here — workers never touch the bot. Entrypoint lands in Phase 2+.
+ExecStart=/root/.local/bin/uv run python -m apps.worker
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

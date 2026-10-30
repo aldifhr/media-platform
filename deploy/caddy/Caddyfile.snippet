@@ -1,0 +1,10 @@
+# media-platform — Caddy reverse proxy snippet
+# Adjust domain + upstream port to match platform-api (default 8000).
+# Caddy handles TLS automatically via Let's Encrypt.
+
+media-backend.aldifhr.my.id {
+    reverse_proxy 127.0.0.1:8000 {
+        health_uri  /health
+        health_interval 30s
+    }
+}

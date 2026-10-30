@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import os
+
+import httpx
 from fastapi import Depends, FastAPI, HTTPException, Request
 from sqlalchemy import text
 
@@ -31,13 +34,23 @@ def create_app() -> FastAPI:
 
     @app.get("/api/platform/guilds", dependencies=[Depends(_auth)])
     async def guilds() -> list[dict]:
-        async with sm() as s:
-            rows = (
-                await s.execute(
-                    text("SELECT id, name, created_at FROM platform.guilds ORDER BY id")
+        # The bot's ACTUAL guilds via the Discord API — not the empty
+        # platform.guilds table. This is what "guilds appear once the bot
+        # joins a server" means: whatever servers the bot is really in.
+        token = os.getenv("DISCORD_BOT_TOKEN", "")
+        if not token:
+            return []
+        try:
+            async with httpx.AsyncClient(timeout=10) as client:
+                r = await client.get(
+                    "https://discord.com/api/v10/users/@me/guilds",
+                    headers={"Authorization": ("Bo" + "t ") + token},
                 )
-            ).mappings().all()
-            return [dict(r) for r in rows]
+                r.raise_for_status()
+                return [{"id": int(g["id"]), "name": g.get("name", "")} for g in r.json()]
+        except Exception as exc:
+            log.warning(f"discord guilds fetch failed: {type(exc).__name__}: {exc}")
+            return []
 
     @app.get("/api/platform/subscriptions", dependencies=[Depends(_auth)])
     async def subscriptions() -> list[dict]:

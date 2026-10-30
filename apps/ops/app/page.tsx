@@ -1,7 +1,7 @@
 import LogoutButton from "./LogoutButton";
 import ManhwaConfigPanel from "./ManhwaConfigPanel";
 import SourcesPanel from "./SourcesPanel";
-import { getManhwaConfig, getManhwaHealth, getSources } from "@/lib/api";
+import { getGuilds, getManhwaConfig, getManhwaHealth, getSources } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 
@@ -33,7 +33,8 @@ function Err({ error }: { error: string }) {
 }
 
 export default async function Dashboard() {
-  const [sourcesR, mhCfgR, mhHealthR] = await Promise.all([
+  const [guildsR, sourcesR, mhCfgR, mhHealthR] = await Promise.all([
+    safe(getGuilds),
     safe(getSources),
     safe(getManhwaConfig),
     safe(getManhwaHealth),
@@ -64,6 +65,25 @@ export default async function Dashboard() {
       ) : (
         <ManhwaConfigPanel config={mhCfgR.data || []} health={mhHealthR.data || []} />
       )}
+
+      <Card title={`Guilds · ${guildsR.data?.length ?? 0} connected`}>
+        {guildsR.error ? (
+          <Err error={guildsR.error} />
+        ) : !guildsR.data || guildsR.data.length === 0 ? (
+          <div className="space-y-1">
+            <span className="text-neutral-500">No guilds yet.</span>
+            <p className="text-xs text-neutral-600">Guilds appear once the bot joins a server.</p>
+          </div>
+        ) : (
+          <ul className="space-y-1 font-mono text-xs">
+            {guildsR.data.map((g) => (
+              <li key={g.id}>
+                {g.id} — {g.name || "(unnamed)"}
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
     </main>
   );
 }

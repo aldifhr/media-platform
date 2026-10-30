@@ -1,7 +1,8 @@
-"""Game3rb + ZeiGames Discord notifier (bot API, per-source thread)."""
+"""Game3rb Discord notifier (bot API, manhwa-style embed)."""
 from __future__ import annotations
 
 import os
+from datetime import UTC, datetime
 
 from modules.media.common.discord import send_channel
 
@@ -29,31 +30,31 @@ def send(items: list[dict], dry_run: bool = False, details: dict | None = None,
 
 
 def _build_embed(item: dict, detail: dict, source: str) -> dict:
+    label = "Game3rb" if source == "game3rb" else source.title()
     title = detail.get("title") or item.get("title", item["slug"])
     synopsis = detail.get("synopsis", "")
     if len(synopsis) > 350:
         synopsis = synopsis[:347] + "..."
 
     fields = []
-    download = detail.get("download", "")
-    if download:
-        fields.append({"name": "Download", "value": f"[Direct Link]({download})", "inline": True})
     posted = detail.get("posted", "")
     if posted:
-        fields.append({"name": "Released", "value": posted[:100], "inline": True})
+        fields.append({"name": "🕐 Released", "value": posted[:100], "inline": True})
+    download = detail.get("download", "")
+    if download:
+        fields.append(
+            {"name": "📥 Download", "value": f"[Direct Link]({download})", "inline": True}
+        )
+    fields.append({"name": "🔗 Source", "value": f"`{label}`", "inline": True})
 
     cover = detail.get("cover", "")
-
-    embed = {
+    return {
         "title": title[:256],
         "url": item["url"],
         "color": 0x10b981 if source == "game3rb" else 0x3b82f6,
         "description": synopsis[:2048] or None,
-        "footer": {"text": f"{source.title()} • PC release"},
+        "thumbnail": {"url": cover} if cover else None,
+        "fields": fields,
+        "footer": {"text": f"Source: {label}"},
+        "timestamp": datetime.now(UTC).isoformat(),
     }
-
-    if fields:
-        embed["fields"] = fields
-    if cover:
-        embed["image"] = {"url": cover}
-    return embed

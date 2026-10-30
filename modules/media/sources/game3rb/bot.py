@@ -2,10 +2,10 @@
 from __future__ import annotations
 
 import argparse
+import datetime as dt
 import os
 import sys
 import time
-import datetime as dt
 
 
 def _load_env() -> None:
@@ -27,8 +27,8 @@ _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, _ROOT)
 
-import modules.media.sources.game3rb.scraper as scraper  # noqa: E402
 import modules.media.sources.game3rb.notifier as notifier  # noqa: E402
+import modules.media.sources.game3rb.scraper as scraper  # noqa: E402
 from modules.media.common.state import State  # noqa: E402
 
 CHECK_INTERVAL = int(os.getenv("GAME3RB_CHECK_INTERVAL_MINUTES", "30"))
@@ -37,7 +37,6 @@ SEEN = State("game3rb")
 
 
 def run_once(dry_run: bool = False) -> dict:
-    now = dt.datetime.now(dt.timezone.utc)
     try:
         html = scraper.fetch_category_page()
     except Exception as e:

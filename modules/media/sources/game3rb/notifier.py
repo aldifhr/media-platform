@@ -29,6 +29,17 @@ def send(items: list[dict], dry_run: bool = False, details: dict | None = None,
     return send_channel(embeds, token_env="DISCORD_BOT_TOKEN", channel_id=target)
 
 
+def _fmt_date(ts: str) -> str:
+    """ISO timestamp -> 'October 30, 2026' (raw value when unparseable)."""
+    if not ts:
+        return ""
+    try:
+        d = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+    except ValueError:
+        return ts
+    return d.strftime("%B %d, %Y")
+
+
 def _build_embed(item: dict, detail: dict, source: str) -> dict:
     label = "Game3rb" if source == "game3rb" else source.title()
     title = detail.get("title") or item.get("title", item["slug"])
@@ -37,7 +48,7 @@ def _build_embed(item: dict, detail: dict, source: str) -> dict:
         synopsis = synopsis[:347] + "..."
 
     fields = []
-    posted = detail.get("posted", "")
+    posted = _fmt_date(detail.get("posted", ""))
     if posted:
         fields.append({"name": "🕐 Released", "value": posted[:100], "inline": True})
     download = detail.get("download", "")

@@ -95,16 +95,21 @@ def parse_detail(html: str) -> dict:
                 cover = src
                 break
 
-    # Synopsis / description - extract from the summary section
+    # Synopsis / description, ordered best-first. The real blurb lives in a
+    # dedicated snippet div (newer layout) or under the "About This Game"
+    # heading; the Game Details block and the first post paragraph are
+    # fallbacks that often carry only "RELEASE NAME : ...".
     synopsis = ""
-    og_desc = soup.find("meta", property="og:description")
-    if og_desc:
-        synopsis = og_desc.get("content", "")
+    snippet = soup.find("div", class_="game_description_snippet")
+    if snippet:
+        synopsis = re.sub(r"\s+", " ", snippet.get_text(" ", strip=True)).strip()
     if not synopsis:
-        # Game description snippet (the actual game blurb on the page)
-        snippet = soup.find("div", class_="game_description_snippet")
-        if snippet:
-            synopsis = re.sub(r"\s+", " ", snippet.get_text(" ", strip=True)).strip()
+        for h in soup.find_all(["h2", "h3", "h4"]):
+            if "about this game" in h.get_text(" ", strip=True).lower():
+                p = h.find_next_sibling("p")
+                if p:
+                    synopsis = re.sub(r"\s+", " ", p.get_text(" ", strip=True)).strip()
+                break
     if not synopsis:
         # Try to find the summary text from the post content
         summary_div = soup.find("div", class_="summaryy")
@@ -129,7 +134,14 @@ def parse_detail(html: str) -> dict:
         if post_body:
             p = post_body.find("p")
             if p:
-                synopsis = re.sub(r"\s+", " ", p.get_text(" ", strip=True)).strip()
+                text = re.sub(r"\s+", " ", p.get_text(" ", strip=True)).strip()
+                # A details line ("RELEASE NAME : X") is not a description.
+                if not re.match(r"(?i)^(download now|game details|release )", text):
+                    synopsis = text
+    if not synopsis:
+        og_desc = soup.find("meta", property="og:description")
+        if og_desc:
+            synopsis = og_desc.get("content", "")
 
     # Download link: thenewscasts.com
     download = ""

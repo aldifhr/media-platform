@@ -16,8 +16,8 @@ from modules.media.common.discord import send_channel
 _LABEL = "Drakorasia"
 # category -> thread env var. "korea" is also the fallback for an untagged item.
 THREAD_ENV = {
-    "korea": "DRAKORASIA_KOREA_DISCORD_THREAD",
-    "china": "DRAKORASIA_CHINA_DISCORD_THREAD",
+    "korea": "DRAKORASIA_KOREA",
+    "china": "DRAKORASIA_CHINA",
 }
 _FALLBACK_ENV = "DRAKORASIA_DISCORD_THREAD"
 

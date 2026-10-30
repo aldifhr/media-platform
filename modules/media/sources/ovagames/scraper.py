@@ -95,24 +95,44 @@ def parse_detail(html: str) -> dict:
                     if p:
                         synopsis = re.sub(r"\s+", " ", p.get_text(" ", strip=True)).strip()
 
-    # download mirrors: every download <a> (dedup by URL, keep anchor label)
+    # download mirrors: links inside .dl-wraps-item (the download section).
+    # OvaGames routes through shorteners now (srnky/clksz/shrinkme) with the
+    # mirror name as the anchor label, so match the download block + label,
+    # not the href host. Fall back to the known-mirror-host match for the
+    # older filecrypt-style layout.
     mirrors: list[dict] = []
     seen_u = set()
-    for a in soup.find_all("a", href=True):
-        href = str(a["href"])
-        host = re.sub(r"^https?://", "", href).split("/")[0].lower()
-        host = re.sub(r"^www\d*\.", "", host)
-        if host not in MIRROR_HOSTS:
-            continue
-        if href in seen_u:
-            continue
-        seen_u.add(href)
-        label = re.sub(r"\s+", " ", a.get_text(" ", strip=True)).strip()
-        if not label or label.lower() in ("download", "here", "link"):
-            label = re.sub(r"^www\d*\.", "", host)
-        mirrors.append({"label": label, "url": href})
-        if len(mirrors) >= 15:
-            break
+    dl_blocks = soup.select(".dl-wraps-item")
+    if dl_blocks:
+        for block in dl_blocks:
+            for a in block.find_all("a", href=True):
+                href = str(a["href"])
+                if not href.startswith("http") or href in seen_u:
+                    continue
+                seen_u.add(href)
+                label = re.sub(r"\s+", " ", a.get_text(" ", strip=True)).strip()
+                label = re.sub(r"^[•\-\s]+", "", label).strip()
+                if not label or label.lower() in ("download", "here", "link"):
+                    label = "Mirror"
+                mirrors.append({"label": label, "url": href})
+                if len(mirrors) >= 15:
+                    break
+            if len(mirrors) >= 15:
+                break
+    else:
+        for a in soup.find_all("a", href=True):
+            href = str(a["href"])
+            host = re.sub(r"^https?://", "", href).split("/")[0].lower()
+            host = re.sub(r"^www\d*\.", "", host)
+            if host not in MIRROR_HOSTS or href in seen_u:
+                continue
+            seen_u.add(href)
+            label = re.sub(r"\s+", " ", a.get_text(" ", strip=True)).strip()
+            if not label or label.lower() in ("download", "here", "link"):
+                label = re.sub(r"^www\d*\.", "", host)
+            mirrors.append({"label": label, "url": href})
+            if len(mirrors) >= 15:
+                break
 
     cover = ""
     m = re.search(r'<meta property="og:image"[^>]+content="([^"]+)"', html)

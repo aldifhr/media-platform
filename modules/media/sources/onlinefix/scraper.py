@@ -2,7 +2,8 @@
 
 Homepage lists ``article.news`` entries; each carries the game link
 (``a.big-link``), title (``h2.title``), cover (``img.lazyload`` data-src) and
-an ISO date (``time[datetime]``). Plain requests works (no Cloudflare).
+an ISO date (``time[datetime]``). Detail pages hold the description in
+``.full-story``. Plain requests works (no Cloudflare).
 """
 from __future__ import annotations
 
@@ -13,6 +14,10 @@ BASE = "https://online-fix.me"
 
 def fetch_homepage() -> str:
     return simple_get(BASE + "/", timeout=25)
+
+
+def fetch_detail(url: str) -> str:
+    return simple_get(url, timeout=25)
 
 
 def _slug_from_url(url: str) -> str:
@@ -42,6 +47,15 @@ def parse_homepage(html: str) -> list[dict]:
         date = (time_el.get("datetime") or "") if time_el else ""
         out.append({"title": title, "url": url, "slug": slug, "cover": cover, "date": date})
     return out
+
+
+def parse_detail(html: str) -> dict:
+    """Return {description} from the game page's .full-story block."""
+    from bs4 import BeautifulSoup
+    soup = BeautifulSoup(html, "html.parser")
+    el = soup.select_one(".full-story") or soup.select_one(".story")
+    desc = el.get_text(" ", strip=True) if el else ""
+    return {"description": desc}
 
 
 def parse_posted(raw: str):

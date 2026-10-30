@@ -9,11 +9,25 @@ import os
 
 from modules.media.common.env import env_int
 from modules.media.common.state import State
+from modules.media.common.translate_en import clean_ru_title, translate_ru_to_en
 import modules.media.sources.onlinefix.notifier as notifier
 import modules.media.sources.onlinefix.scraper as scraper
 
 NEW_WINDOW_HOURS = env_int("ONLINEFIX_NEW_WINDOW_HOURS", 168)  # 7 days
+_DESC_CHARS = 700
 SEEN = State("onlinefix")
+
+
+def _enrich(it: dict) -> None:
+    """Fetch the detail page and attach an English title + description."""
+    try:
+        det = scraper.parse_detail(scraper.fetch_detail(it["url"]))
+    except Exception as e:
+        print(f"[online-fix] detail fetch failed for {it['slug']}: {e}")
+        det = {}
+    it["en_title"] = translate_ru_to_en(clean_ru_title(it["title"])) or it["title"]
+    raw = det.get("description", "")
+    it["en_desc"] = translate_ru_to_en(raw[:_DESC_CHARS]) if raw else ""
 
 
 def run_once(dry_run: bool = False) -> dict:
@@ -35,6 +49,8 @@ def run_once(dry_run: bool = False) -> dict:
         if pub is None or pub >= cutoff:
             final.append(it)
 
+    for it in final:
+        _enrich(it)
     sent = notifier.send(final, dry_run=dry_run)
     if not dry_run:
         for it in final[:sent]:

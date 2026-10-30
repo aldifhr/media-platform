@@ -9,12 +9,15 @@ THREAD_ENV = "ONLINEFIX_DISCORD_THREAD"
 
 
 def build_embed(item: dict) -> dict:
+    title = (item.get("en_title") or item.get("title", ""))[:256]
     embed = {
-        "title": item.get("title", "")[:256],
+        "title": title,
         "url": item.get("url", ""),
         "color": 0xf59e0b,
         "footer": {"text": "Online-Fix • game fix"},
     }
+    if item.get("en_desc"):
+        embed["description"] = item["en_desc"][:2000]
     if item.get("cover"):
         embed["image"] = {"url": item["cover"]}
     return embed
@@ -26,7 +29,7 @@ def send(items: list[dict], dry_run: bool = False) -> int:
     embeds = [build_embed(it) for it in items]
     if dry_run:
         for it in items:
-            print(f"[online-fix][dry-run] WOULD notify: {it['title']}")
+            print(f"[online-fix][dry-run] WOULD notify: {it.get('en_title') or it.get('title')}")
         return len(items)
     thread = os.getenv(THREAD_ENV, "")
     if not thread:

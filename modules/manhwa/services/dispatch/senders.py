@@ -2,16 +2,17 @@
 
 Split out of runner.py. Shares `_RunState` + outcome constants via state.py.
 """
+
 from __future__ import annotations
 
 import html
 import time
 
+from modules.manhwa.core.text import deslugify_title_key
 from modules.manhwa.discord import client as discord
 from modules.manhwa.discord.client import _TimeoutSentinel
 from modules.manhwa.discord.embeds import add_whitelist_button, build_chapter_embed
 from modules.manhwa.logger import get_logger
-from modules.manhwa.core.text import deslugify_title_key
 from modules.manhwa.services.dispatch.channels import (
     _DEAD_CHANNEL_MAX_FAILS,
     _DEAD_CHANNEL_TTL,
@@ -21,9 +22,9 @@ from modules.manhwa.services.dispatch.guards import is_implausible_chapter
 from modules.manhwa.services.dispatch.state import (
     _BLOCKED,
     _DRY,
-    _RunState,
     _SENT,
     _SKIPPED,
+    _RunState,
 )
 from modules.manhwa.services.fcfs import fcfs_key, fcfs_key_for_item
 from modules.manhwa.storage import dispatch as dispatch_store
@@ -171,7 +172,9 @@ def _send_item(
     tk_legacy = str(it.get("title_key") or "")
     ch_legacy = str(it.get("chapter") or "")
     try:
-        ch_norm = ("%.10g" % float(ch_legacy)) if ch_legacy else ch_legacy
+        # %.10g kept verbatim: a format specifier is an unsafe fix that can
+        # change the normalized chapter key used for legacy dedup.
+        ch_norm = ("%.10g" % float(ch_legacy)) if ch_legacy else ch_legacy  # noqa: UP031
     except (ValueError, TypeError):
         ch_norm = ch_legacy
     if (tk_legacy, ch_legacy) in run.legacy_pairs or (

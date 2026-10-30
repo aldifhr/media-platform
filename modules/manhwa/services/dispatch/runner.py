@@ -232,7 +232,6 @@ def _tag_subscribed(to_send: list[dict]) -> bool:
     return wl_unavailable
 
 
-
 def dispatch(
     items: list[dict],
     channel_ids: list[str],
@@ -335,9 +334,7 @@ def dispatch(
     # All fcfs_keys already in dispatch_history — used by the ceiling guard to
     # distinguish "already sent, skip" from "never sent, allow through".
     # Scoped to this batch's title_keys — see _load_sent_keys_global.
-    _batch_tks = [
-        str(it.get("title_key") or "").strip() for it in to_send if it.get("title_key")
-    ]
+    _batch_tks = [str(it.get("title_key") or "").strip() for it in to_send if it.get("title_key")]
     sent_keys_global = _load_sent_keys_global(_batch_tks)
     ceilings = load_chapter_ceilings(
         list(

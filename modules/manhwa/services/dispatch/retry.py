@@ -10,19 +10,20 @@ Strategy:
 - Priority: newest failures first
 - Permanent failure detection: Discord 4xx = don't retry (bad URL, deleted, etc.)
 """
+
 from __future__ import annotations
 
-from modules.manhwa.logger import get_logger
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from modules.manhwa.core.resilience import cb_discord
+from modules.manhwa.logger import get_logger
 from modules.manhwa.storage.dispatch import complete_dispatch_claim
 
 logger = get_logger("services:dispatch_retry")
 
 # Exponential backoff: delay = min(base * 2^attempt, cap)
-RETRY_BASE_S = 300        # 5 min for first retry
-RETRY_CAP_S = 3600        # 1 hour max
+RETRY_BASE_S = 300  # 5 min for first retry
+RETRY_CAP_S = 3600  # 1 hour max
 RETRY_PERMANENT_CODES = {400, 401, 403, 404, 405, 410, 422}  # Discord: don't retry
 
 # Legacy constants (kept for backward compat — dispatch.py imports these)
@@ -32,7 +33,7 @@ RETRY_COOLDOWN_S = RETRY_BASE_S
 
 def _backoff_delay(attempt: int) -> float:
     """Exponential backoff with cap."""
-    delay = RETRY_BASE_S * (2 ** attempt)
+    delay = RETRY_BASE_S * (2**attempt)
     return min(delay, RETRY_CAP_S)
 
 
@@ -49,21 +50,30 @@ def retry_failed_dispatches(channel_ids: list[str] | None = None) -> dict:
     On success: mark 'resolved', record in dispatch_history.
     On failure: increment retry_count, update updated_at (triggers backoff).
 
-    Returns stats dict {retried, resent, skipped_cb, skipped_window, skipped_permanent, still_failed}.
+    Returns stats dict {retried, resent, skipped_cb, skipped_window,
+    skipped_permanent, still_failed}.
     """
-    from modules.manhwa.db import get_supabase
     from modules.manhwa.cron.dispatch_mod import _load_channels, fcfs_key
+    from modules.manhwa.db import get_supabase
     from modules.manhwa.discord import client as discord
     from modules.manhwa.discord.client import _TimeoutSentinel
     from modules.manhwa.discord.embeds import build_chapter_embed
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     # Skip if Discord is down — retrying wastes attempts and burns backoff
     if cb_discord.is_open():
         logger.info("retry_failed: Discord circuit OPEN, skipping retry pass")
-        return {"retried": 0, "resent": 0, "skipped_cb": 0, "skipped_window": 0, "skipped_permanent": 0,
-                "skipped_unsubscribed": 0, "unknown": 0, "still_failed": 0}
+        return {
+            "retried": 0,
+            "resent": 0,
+            "skipped_cb": 0,
+            "skipped_window": 0,
+            "skipped_permanent": 0,
+            "skipped_unsubscribed": 0,
+            "unknown": 0,
+            "still_failed": 0,
+        }
 
     # Recover rows a crashed pass left in 'retrying'. The claim below only
     # looks at status='failed', so without this reaper a row claimed by a pass
@@ -100,12 +110,28 @@ def retry_failed_dispatches(channel_ids: list[str] | None = None) -> dict:
         ).data or []
     except Exception as e:
         logger.error("retry_failed: load failed", exc=e)
-        return {"retried": 0, "resent": 0, "skipped_cb": 0, "skipped_window": 0, "skipped_permanent": 0,
-                "skipped_unsubscribed": 0, "unknown": 0, "still_failed": 0}
+        return {
+            "retried": 0,
+            "resent": 0,
+            "skipped_cb": 0,
+            "skipped_window": 0,
+            "skipped_permanent": 0,
+            "skipped_unsubscribed": 0,
+            "unknown": 0,
+            "still_failed": 0,
+        }
 
     if not rows:
-        return {"retried": 0, "resent": 0, "skipped_cb": 0, "skipped_window": 0, "skipped_permanent": 0,
-                "skipped_unsubscribed": 0, "unknown": 0, "still_failed": 0}
+        return {
+            "retried": 0,
+            "resent": 0,
+            "skipped_cb": 0,
+            "skipped_window": 0,
+            "skipped_permanent": 0,
+            "skipped_unsubscribed": 0,
+            "unknown": 0,
+            "still_failed": 0,
+        }
 
     # Atomically claim these rows so a concurrent retry pass (or the API
     # retry-all endpoint) cannot send the same chapters twice.
@@ -114,6 +140,7 @@ def retry_failed_dispatches(channel_ids: list[str] | None = None) -> dict:
     if _urls:
         try:
             from modules.manhwa.db_adapter import get_conn, put_conn
+
             conn = get_conn()
             try:
                 cur = conn.cursor()
@@ -135,8 +162,16 @@ def retry_failed_dispatches(channel_ids: list[str] | None = None) -> dict:
 
     channels = channel_ids or _load_channels()
     if not channels:
-        return {"retried": 0, "resent": 0, "skipped_cb": 0, "skipped_window": 0, "skipped_permanent": 0,
-                "skipped_unsubscribed": 0, "unknown": 0, "still_failed": len(rows)}
+        return {
+            "retried": 0,
+            "resent": 0,
+            "skipped_cb": 0,
+            "skipped_window": 0,
+            "skipped_permanent": 0,
+            "skipped_unsubscribed": 0,
+            "unknown": 0,
+            "still_failed": len(rows),
+        }
 
     # Route each retry to the same feed dispatch() would use. Without this the
     # retry pass sent to EVERY channel, so a whitelisted series whose first
@@ -161,11 +196,14 @@ def retry_failed_dispatches(channel_ids: list[str] | None = None) -> dict:
             rc = (
                 get_supabase()
                 .table("recent_chapters")
-                .select("chapter_url, title_key, title, chapter, cover, series_url, source, origin, description, updated_time, rating, genres")
+                .select(
+                    "chapter_url, title_key, title, chapter, cover, series_url, "
+                    "source, origin, description, updated_time, rating, genres"
+                )
                 .in_("chapter_url", urls)
                 .execute()
             )
-            for r in (rc.data or []):
+            for r in rc.data or []:
                 if r.get("chapter_url"):
                     rc_by_url[str(r["chapter_url"])] = r
         except Exception as e:
@@ -193,10 +231,9 @@ def retry_failed_dispatches(channel_ids: list[str] | None = None) -> dict:
     # shinigami is NOT subscribed on another source. Matching on the title alone sent
     # notifications from sources nobody subscribed to.
     from modules.manhwa.core.text import slugify_title_key as _slugify
+
     try:
-        wl_rows = (
-            get_supabase().table("whitelist").select("title_key, source").execute().data or []
-        )
+        wl_rows = get_supabase().table("whitelist").select("title_key, source").execute().data or []
         wl_pairs = {
             (_slugify(str(w.get("title_key") or "")), str(w.get("source") or "").lower())
             for w in wl_rows
@@ -206,8 +243,14 @@ def retry_failed_dispatches(channel_ids: list[str] | None = None) -> dict:
         # Fail CLOSED: without the whitelist we cannot tell a live subscription
         # from a cancelled one, and sending to a cancelled one is the bug.
         logger.error("retry_failed: whitelist load failed, skipping pass", exc=e)
-        return {"retried": 0, "resent": 0, "skipped_cb": 0, "skipped_window": 0,
-                "skipped_permanent": 0, "still_failed": len(rows)}
+        return {
+            "retried": 0,
+            "resent": 0,
+            "skipped_cb": 0,
+            "skipped_window": 0,
+            "skipped_permanent": 0,
+            "still_failed": len(rows),
+        }
 
     # Static series metadata (cover/rating/genres/description/type) lives in
     # series_meta, NOT recent_chapters. A retry built only from recent_chapters
@@ -217,7 +260,9 @@ def retry_failed_dispatches(channel_ids: list[str] | None = None) -> dict:
     try:
         from modules.manhwa.storage.series_meta import load_series_meta_map
 
-        _tks = [str(r.get("title_key") or "").strip() for r in rc_by_url.values() if r.get("title_key")]
+        _tks = [
+            str(r.get("title_key") or "").strip() for r in rc_by_url.values() if r.get("title_key")
+        ]
         sm_by_key = load_series_meta_map(get_supabase(), _tks)
     except Exception as e:
         logger.warning("retry_failed: series_meta lookup failed", err=str(e)[:120])
@@ -259,11 +304,13 @@ def retry_failed_dispatches(channel_ids: list[str] | None = None) -> dict:
     # independently of chapter_url so a rotated URL cannot hide a delivery.
     if urls:
         try:
-            _tks = sorted({
-                str(r.get("title_key") or "").strip()
-                for r in rows
-                if str(r.get("title_key") or "").strip()
-            })
+            _tks = sorted(
+                {
+                    str(r.get("title_key") or "").strip()
+                    for r in rows
+                    if str(r.get("title_key") or "").strip()
+                }
+            )
             if _tks:
                 _fh = (
                     get_supabase()
@@ -294,19 +341,26 @@ def retry_failed_dispatches(channel_ids: list[str] | None = None) -> dict:
         # twice from two different sources is how the two drift apart.
         meta = rc_by_url.get(url, {})
         title = str(meta.get("title") or row.get("title_key") or "Unknown")
-        chapter = str(meta.get("chapter") or row.get("chapter_number") or row.get("chapter_title") or "?")
+        chapter = str(
+            meta.get("chapter") or row.get("chapter_number") or row.get("chapter_title") or "?"
+        )
         source = str(meta.get("source") or row.get("source", ""))
         row_fk = fcfs_key(title, chapter)
 
         if url in already_sent or row_fk in already_sent_fcfs:
             try:
                 get_supabase().table("failed_dispatches").update(
-                    {"status": "resolved", "updated_at": now.isoformat(),
-                     "error_message": "Already notified on a live channel"}
+                    {
+                        "status": "resolved",
+                        "updated_at": now.isoformat(),
+                        "error_message": "Already notified on a live channel",
+                    }
                 ).eq("chapter_url", url).execute()
                 skipped_duplicate += 1
             except Exception as e:
-                logger.warning("retry: failed_dispatches update failed", url=url[:80], err=str(e)[:120])
+                logger.warning(
+                    "retry: failed_dispatches update failed", url=url[:80], err=str(e)[:120]
+                )
             continue
 
         # Drop rows whose (title, source) is no longer whitelisted (see gate above).
@@ -314,12 +368,17 @@ def retry_failed_dispatches(channel_ids: list[str] | None = None) -> dict:
         if (_slugify(str(row.get("title_key") or "")), _row_src) not in wl_pairs:
             try:
                 get_supabase().table("failed_dispatches").update(
-                    {"status": "resolved", "updated_at": now.isoformat(),
-                     "error_message": "Series no longer whitelisted"}
+                    {
+                        "status": "resolved",
+                        "updated_at": now.isoformat(),
+                        "error_message": "Series no longer whitelisted",
+                    }
                 ).eq("chapter_url", url).execute()
                 skipped_unsubscribed += 1
             except Exception as e:
-                logger.warning("retry: failed_dispatches update failed", url=url[:80], err=str(e)[:120])
+                logger.warning(
+                    "retry: failed_dispatches update failed", url=url[:80], err=str(e)[:120]
+                )
             continue
 
         # Check permanent failure
@@ -336,7 +395,9 @@ def retry_failed_dispatches(channel_ids: list[str] | None = None) -> dict:
                 ).eq("chapter_url", url).execute()
                 skipped_permanent += 1
             except Exception as e:
-                logger.warning("retry: failed_dispatches update failed", url=url[:80], err=str(e)[:120])
+                logger.warning(
+                    "retry: failed_dispatches update failed", url=url[:80], err=str(e)[:120]
+                )
             continue
 
         # Check backoff
@@ -358,16 +419,26 @@ def retry_failed_dispatches(channel_ids: list[str] | None = None) -> dict:
             # Mark resolved (no longer relevant)
             try:
                 get_supabase().table("failed_dispatches").update(
-                    {"status": "resolved", "updated_at": now.isoformat(), "error_message": "Chapter pruned from 24h window"}
+                    {
+                        "status": "resolved",
+                        "updated_at": now.isoformat(),
+                        "error_message": "Chapter pruned from 24h window",
+                    }
                 ).eq("chapter_url", url).execute()
                 skipped_window += 1
             except Exception as e:
-                logger.warning("retry: failed_dispatches update failed", url=url[:80], err=str(e)[:120])
+                logger.warning(
+                    "retry: failed_dispatches update failed", url=url[:80], err=str(e)[:120]
+                )
             continue
 
         # Attempt send. title/chapter/source/row_fk were derived above.
         _sm = sm_by_key.get((str(meta.get("title_key") or "").strip(), source.strip()), {})
-        _rating = meta.get("rating") if meta.get("rating") not in (None, "", 0, "0", 0.0) else _sm.get("rating")
+        _rating = (
+            meta.get("rating")
+            if meta.get("rating") not in (None, "", 0, "0", 0.0)
+            else _sm.get("rating")
+        )
 
         item = {
             "title": title,
@@ -384,10 +455,16 @@ def retry_failed_dispatches(channel_ids: list[str] | None = None) -> dict:
         }
 
         embed = build_chapter_embed(
-            title=item["title"], chapter=item["chapter"], url=url,
-            series_url=item["series_url"], source=item["source"], cover=item["cover"],
-            rating=item["rating"], genres=item["genres"],
-            description=item["description"], updated_time=item["updated_time"],
+            title=item["title"],
+            chapter=item["chapter"],
+            url=url,
+            series_url=item["series_url"],
+            source=item["source"],
+            cover=item["cover"],
+            rating=item["rating"],
+            genres=item["genres"],
+            description=item["description"],
+            updated_time=item["updated_time"],
         )
         content = f"🔔 New Release on **{title}** — Chapter {item['chapter']}"
 
@@ -426,8 +503,12 @@ def retry_failed_dispatches(channel_ids: list[str] | None = None) -> dict:
                 # user already saw it, and re-posting trains them to ignore
                 # the feed.
                 complete_dispatch_claim(
-                    url, None, "retry", str(row.get("title_key", "unknown")),
-                    source, fcfs_key=row_fk,
+                    url,
+                    None,
+                    "retry",
+                    str(row.get("title_key", "unknown")),
+                    source,
+                    fcfs_key=row_fk,
                     chapter_title=chapter,
                 )
                 get_supabase().table("failed_dispatches").update(
@@ -438,7 +519,11 @@ def retry_failed_dispatches(channel_ids: list[str] | None = None) -> dict:
                     unknown_count += 1
             else:
                 get_supabase().table("failed_dispatches").update(
-                    {"status": "failed", "retry_count": retry_count + 1, "updated_at": now.isoformat()}
+                    {
+                        "status": "failed",
+                        "retry_count": retry_count + 1,
+                        "updated_at": now.isoformat(),
+                    }
                 ).eq("chapter_url", url).execute()
                 still_failed += 1
         except Exception as e:
@@ -446,14 +531,16 @@ def retry_failed_dispatches(channel_ids: list[str] | None = None) -> dict:
             still_failed += 1
 
     logger.info(
-        "retry_failed completed: retried=%d resent=%d unknown=%d skipped_cb=%d skipped_window=%d "
-        "skipped_permanent=%d skipped_unsubscribed=%d skipped_duplicate=%d still_failed=%d"
-        % (retried, resent, unknown_count, skipped_cb, skipped_window, skipped_permanent,
-           skipped_unsubscribed, skipped_duplicate, still_failed)
+        f"retry_failed completed: retried={retried} resent={resent} unknown={unknown_count} "
+        f"skipped_cb={skipped_cb} skipped_window={skipped_window} "
+        f"skipped_permanent={skipped_permanent} skipped_unsubscribed={skipped_unsubscribed} "
+        f"skipped_duplicate={skipped_duplicate} still_failed={still_failed}"
     )
     return {
-        "retried": retried, "resent": resent,
-        "skipped_cb": skipped_cb, "skipped_window": skipped_window,
+        "retried": retried,
+        "resent": resent,
+        "skipped_cb": skipped_cb,
+        "skipped_window": skipped_window,
         "skipped_permanent": skipped_permanent,
         "skipped_unsubscribed": skipped_unsubscribed,
         "skipped_duplicate": skipped_duplicate,

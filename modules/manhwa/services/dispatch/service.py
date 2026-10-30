@@ -2,16 +2,22 @@
 
 Extracted from dispatch_mod.py for cleaner separation.
 """
+
 from __future__ import annotations
 
 import html
 
+from modules.manhwa.core.resilience import (
+    cb_db,
+    cb_discord,
+    retry_with_backoff,
+    with_circuit_breaker,
+)
 from modules.manhwa.db import get_supabase
 from modules.manhwa.discord import client as discord
 from modules.manhwa.discord.embeds import build_chapter_embed
 from modules.manhwa.logger import get_logger
 from modules.manhwa.services.shared import fcfs_key
-from modules.manhwa.core.resilience import retry_with_backoff, with_circuit_breaker, cb_discord, cb_db
 
 logger = get_logger("services:dispatch")
 
@@ -52,6 +58,7 @@ class DispatchService:
 
         if cover_url and isinstance(cover_url, str) and cover_url.startswith("http"):
             from modules.manhwa.discord.http import fetch_cover
+
             result = fetch_cover(cover_url)
             if result:
                 content_bytes, content_type = result
@@ -66,7 +73,9 @@ class DispatchService:
                     "image/gif": "gif",
                 }
                 ext = ext_map.get(content_type, "jpg")
-                attachment_filename = f"cover_{fcfs_key(item.get('title', ''), item.get('chapter', ''))[:20]}.{ext}"
+                attachment_filename = (
+                    f"cover_{fcfs_key(item.get('title', ''), item.get('chapter', ''))[:20]}.{ext}"
+                )
                 attachment = (attachment_filename, content_bytes, content_type)
 
         embed = build_chapter_embed(
@@ -84,7 +93,8 @@ class DispatchService:
         if attachment:
             embed["thumbnail"] = {"url": f"attachment://{attachment_filename}"}
 
-        content = f"🔔 New Release on **{html.unescape(item.get('title', 'Unknown'))}** — Chapter {item.get('chapter', '?')}"
+        _title = html.unescape(item.get("title", "Unknown"))
+        content = f"🔔 New Release on **{_title}** — Chapter {item.get('chapter', '?')}"
 
         try:
             if attachment:
@@ -92,7 +102,9 @@ class DispatchService:
                     channel_id=channel_id, content=content, embeds=[embed], attachments=[attachment]
                 )
             else:
-                resp = discord.send_channel_message(channel_id=channel_id, content=content, embeds=[embed])
+                resp = discord.send_channel_message(
+                    channel_id=channel_id, content=content, embeds=[embed]
+                )
             return resp is not None
         except Exception as e:
             logger.warn("send_chapter failed", err=str(e)[:120])
@@ -102,8 +114,13 @@ class DispatchService:
         """Update latest_sent_chapter in whitelist."""
         try:
             from modules.manhwa.db import q
-            q("UPDATE whitelist SET latest_sent_chapter = GREATEST(COALESCE(latest_sent_chapter, 0), %s) WHERE title_key = %s AND source = %s",
-              [chapter_num, title_key, source])
+
+            q(
+                "UPDATE whitelist SET latest_sent_chapter = "
+                "GREATEST(COALESCE(latest_sent_chapter, 0), %s) "
+                "WHERE title_key = %s AND source = %s",
+                [chapter_num, title_key, source],
+            )
         except Exception as e:
             logger.warn("update_latest_sent_chapter failed", err=str(e)[:120])
 
@@ -111,15 +128,23 @@ class DispatchService:
         """Update latest_chapter (highest chapter seen/available) in whitelist."""
         try:
             from modules.manhwa.db import q
-            q("UPDATE whitelist SET latest_chapter = GREATEST(COALESCE(latest_chapter, 0), %s) WHERE title_key = %s AND source = %s",
-              [chapter_num, title_key, source])
+
+            q(
+                "UPDATE whitelist SET latest_chapter = "
+                "GREATEST(COALESCE(latest_chapter, 0), %s) "
+                "WHERE title_key = %s AND source = %s",
+                [chapter_num, title_key, source],
+            )
         except Exception as e:
             logger.warn("update_latest_chapter failed", err=str(e)[:120])
 
     # Facade for storage claim (storage leaky fix - dispatch owns orchestration)
-    def claim_for_dispatch(self, whitelist: list[dict] | None = None, hours: int = 24, limit: int = 500) -> list[dict]:
+    def claim_for_dispatch(
+        self, whitelist: list[dict] | None = None, hours: int = 24, limit: int = 500
+    ) -> list[dict]:
         """Delegate to storage but owned by dispatch service (single seam)."""
         from modules.manhwa.storage.recent_chapters import claim_recent_chapters_for_dispatch
+
         return claim_recent_chapters_for_dispatch(whitelist=whitelist, hours=hours, limit=limit)
 
 

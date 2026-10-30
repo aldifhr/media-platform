@@ -3,7 +3,10 @@
 These operate on dispatch items + storage, not on cron orchestration, so they
 live in the services layer. `cron.enrich` re-exports them for backward compat.
 """
+
 from __future__ import annotations
+
+from datetime import UTC
 
 from modules.manhwa.core.time import RECENT_WINDOW_HOURS, cutoff_dt, parse_iso_utc
 from modules.manhwa.logger import get_logger
@@ -16,7 +19,8 @@ def _split_send_backfill(items: list[dict]) -> tuple[list[dict], list[dict]]:
     24h go to Discord; HTML-backlog items (flagged html_backlog, no real
     timestamp) go to silent backfill.
     """
-    from datetime import datetime, timezone
+    from datetime import datetime
+
     from modules.manhwa.services.fcfs import fcfs_key
 
     # Dedup by FCFS key, but keep the SUBSCRIBED copy when a title+chapter
@@ -60,7 +64,7 @@ def _split_send_backfill(items: list[dict]) -> tuple[list[dict], list[dict]]:
         if ts_raw:
             # Accept both str (RSS/JSON) and datetime (DB row via _row_to_item)
             if isinstance(ts_raw, datetime):
-                ts = ts_raw if ts_raw.tzinfo else ts_raw.replace(tzinfo=timezone.utc)
+                ts = ts_raw if ts_raw.tzinfo else ts_raw.replace(tzinfo=UTC)
             else:
                 ts = parse_iso_utc(ts_raw)
             if ts is not None:
@@ -93,21 +97,20 @@ def mark_history_only(urls: list[str], title_keys: list[str]) -> int:
     """Record backlog chapter URLs as already-seen in dispatch_claims."""
     if not urls:
         return 0
-    from datetime import datetime, timezone, timedelta
+    from datetime import datetime, timedelta
+
     from modules.manhwa.db import get_supabase
 
-    expires = (datetime.now(timezone.utc) + timedelta(days=365)).isoformat()
+    expires = (datetime.now(UTC) + timedelta(days=365)).isoformat()
     rows = [
         {"chapter_url": u, "title_key": tk or "unknown", "expires_at": expires}
-        for u, tk in zip(urls, title_keys)
+        for u, tk in zip(urls, title_keys, strict=False)
         if u
     ]
     if not rows:
         return 0
     try:
-        get_supabase().table("dispatch_claims").upsert(
-            rows, on_conflict="chapter_url"
-        ).execute()
+        get_supabase().table("dispatch_claims").upsert(rows, on_conflict="chapter_url").execute()
         return len(rows)
     except Exception as e:
         logger.warn("mark_history_only failed", err=str(e))
@@ -117,8 +120,14 @@ def mark_history_only(urls: list[str], title_keys: list[str]) -> int:
 def backfill_dispatch_history(items: list[dict], instance_id: str) -> int:
     """Silently record backlog chapter URLs as already-dispatched so they're
     never notified later. Used for HTML-scraped backlog chapters."""
-    urls = [it.get("url") or it.get("chapter_url") for it in items if (it.get("url") or it.get("chapter_url"))]
-    tks = [it.get("title_key", "unknown") for it in items if (it.get("url") or it.get("chapter_url"))]
+    urls = [
+        it.get("url") or it.get("chapter_url")
+        for it in items
+        if (it.get("url") or it.get("chapter_url"))
+    ]
+    tks = [
+        it.get("title_key", "unknown") for it in items if (it.get("url") or it.get("chapter_url"))
+    ]
     if not urls:
         return 0
     return mark_history_only(urls, tks)

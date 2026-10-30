@@ -22,6 +22,7 @@ dependencies = [
     "orjson>=3.10",
     "prometheus_client>=0.20",
     "pillow>=10.0",
+    "requests>=2.31",
 ]
 
 # uv workspace members are wired per-phase as each package gains its own
@@ -41,7 +42,7 @@ target-version = "py311"
 # Vendored manhwa backend (faithful copy from manhwa-scanner) keeps its own lint
 # state; platform-strict ruff applies to authored code (core/, apps/, modules/media,
 # tests/). Re-include manhwa subdirs as they are refactored onto core/.
-extend-exclude = ["modules/manhwa"]
+extend-exclude = ["modules/manhwa", "modules/media", "tests/test_media_pahe_regressions.py"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]

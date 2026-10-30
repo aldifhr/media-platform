@@ -10,17 +10,21 @@ THREAD_ENV = "FREETP_DISCORD_THREAD"
 
 def build_embed(item: dict) -> dict:
     title = (item.get("en_title") or item.get("title", ""))[:256]
-    embed = {
+    desc = ""
+    fields = [{"name": "Source", "value": "FreeTP", "inline": True}]
+    syn = item.get("en_desc") or ""
+    if syn:
+        desc = syn[:350] + ("..." if len(syn) > 350 else "")
+    cover = item.get("cover") or ""
+    return {
         "title": title,
         "url": item.get("url", ""),
         "color": 0x8b5cf6,
-        "footer": {"text": "FreeTP • network game"},
+        "thumbnail": {"url": cover} if cover else None,
+        "fields": fields,
+        "description": desc or None,
+        "footer": {"text": "FreeTP • PC release"},
     }
-    if item.get("en_desc"):
-        embed["description"] = item["en_desc"][:2000]
-    if item.get("cover"):
-        embed["image"] = {"url": item["cover"]}
-    return embed
 
 
 def send(items: list[dict], dry_run: bool = False) -> int:

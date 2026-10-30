@@ -1,9 +1,9 @@
 {
   "pahe": {
-    "status": "healthy",
-    "consecutive_failures": 0,
+    "status": "degraded",
+    "consecutive_failures": 2,
     "disabled_until": null,
     "last_error": null,
-    "last_checked_at": "2026-10-30T17:10:57.134665+00:00"
+    "last_checked_at": "2026-10-30T17:40:29.531419+00:00"
   }
 }

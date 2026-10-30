@@ -10,17 +10,24 @@ THREAD_ENV = "ONLINEFIX_DISCORD_THREAD"
 
 def build_embed(item: dict) -> dict:
     title = (item.get("en_title") or item.get("title", ""))[:256]
-    embed = {
+    desc = ""
+    fields = [{"name": "Source", "value": "Online-Fix", "inline": True}]
+    syn = item.get("en_desc") or ""
+    if syn:
+        desc = syn[:350] + ("..." if len(syn) > 350 else "")
+    posted = (item.get("date") or "")[:10]
+    if posted:
+        fields.append({"name": "Released", "value": posted, "inline": True})
+    cover = item.get("cover") or ""
+    return {
         "title": title,
         "url": item.get("url", ""),
         "color": 0xf59e0b,
-        "footer": {"text": "Online-Fix • game fix"},
+        "thumbnail": {"url": cover} if cover else None,
+        "fields": fields,
+        "description": desc or None,
+        "footer": {"text": "Online-Fix • PC release"},
     }
-    if item.get("en_desc"):
-        embed["description"] = item["en_desc"][:2000]
-    if item.get("cover"):
-        embed["image"] = {"url": item["cover"]}
-    return embed
 
 
 def send(items: list[dict], dry_run: bool = False) -> int:

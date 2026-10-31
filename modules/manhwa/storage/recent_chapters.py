@@ -14,6 +14,9 @@ from modules.manhwa.db import get_conn, put_conn
 from modules.manhwa.logger import get_logger
 from modules.manhwa.core.fcfs import fcfs_key_for_item
 from modules.manhwa.core.time import cutoff_iso
+from modules.manhwa.storage.recent_chapters_caches import (  # noqa: F401
+    invalidate_whitelist_origin_cache,
+)
 from modules.manhwa.storage.recent_chapters_ingest import (  # noqa: F401
     batch_insert_recent_chapters,
 )

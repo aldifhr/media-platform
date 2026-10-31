@@ -14,12 +14,16 @@ from modules.manhwa.db import get_conn, put_conn
 from modules.manhwa.logger import get_logger
 from modules.manhwa.core.fcfs import fcfs_key_for_item
 from modules.manhwa.core.time import cutoff_iso
+from modules.manhwa.storage.recent_chapters_ingest import (  # noqa: F401
+    batch_insert_recent_chapters,
+)
 from modules.manhwa.storage.recent_chapters_sql import *  # noqa: F401,F403 — re-export public SQL helpers
 from modules.manhwa.storage.recent_chapters_sql import (
     _row_to_item,
 )
-from modules.manhwa.storage.recent_chapters_ingest import (  # noqa: F401
-    batch_insert_recent_chapters,
+from modules.manhwa.storage.recent_chapters_window import (  # noqa: F401
+    prune_dispatch_history_older_than,
+    prune_older_than,
 )
 
 logger = get_logger("storage:recent_chapters")

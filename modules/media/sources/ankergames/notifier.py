@@ -86,6 +86,10 @@ def build_embed(item: dict, detail: dict | None = None) -> dict:
     if detail:
         repack = (detail.get("repack_features") or "")[:350]
         if repack:
+            # API returns raw HTML — strip tags for the embed field
+            import re
+            repack = re.sub(r"<[^>]+>", " ", repack)
+            repack = re.sub(r"\s+", " ", repack).strip()
             fields.append({"name": "📋 Details", "value": repack + ("..." if len(repack) == 350 else ""), "inline": False})
 
     desc = ""

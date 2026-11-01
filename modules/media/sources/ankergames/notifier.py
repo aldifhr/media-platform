@@ -82,19 +82,16 @@ def build_embed(item: dict, detail: dict | None = None) -> dict:
         dl = _fmt_files(files)
         fields.append({"name": f"📥 Downloads ({len(files)})", "value": dl, "inline": False})
 
-    # Description from detail
+    # Description from detail — prefer clean overview over raw repack_features
+    desc = (item.get("overview") or "").strip()
     if detail:
-        repack = (detail.get("repack_features") or "")[:350]
-        if repack:
-            # API returns raw HTML — strip tags for the embed field
+        if not desc:
+            desc = (detail.get("repack_features") or "").strip()
+        # fallback: strip HTML if only repack_features available
+        if desc and "<" in desc:
             import re
-            repack = re.sub(r"<[^>]+>", " ", repack)
-            repack = re.sub(r"\s+", " ", repack).strip()
-            fields.append({"name": "📋 Details", "value": repack + ("..." if len(repack) == 350 else ""), "inline": False})
-
-    desc = ""
-    if overview:
-        desc = overview + ("..." if len(overview) >= 350 else "")
+            desc = re.sub(r"<[^>]+>", " ", desc)
+            desc = re.sub(r"\s+", " ", desc).strip()
 
     return {
         "title": title_line[:256],

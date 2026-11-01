@@ -5,6 +5,7 @@ Inbound command/button routing per ADR-001.
 from __future__ import annotations
 
 import json
+import os
 
 from fastapi import FastAPI, Request, Response
 
@@ -22,7 +23,8 @@ UPDATE_MESSAGE = 7
 DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE = 5
 
 # Authorized user ID for exclude button (zerosense)
-_AUTHORIZED_EXCLUDE_USER = "656952310"
+# Set in .env as EXCLUDE_AUTHORIZED_USER_ID for easy updates without code changes.
+_AUTHORIZED_EXCLUDE_USER = os.environ.get("EXCLUDE_AUTHORIZED_USER_ID", "656952310")
 
 
 def create_app() -> FastAPI:

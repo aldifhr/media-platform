@@ -232,6 +232,27 @@ def _tag_subscribed(to_send: list[dict]) -> bool:
     return wl_unavailable
 
 
+def _tag_excluded(to_send: list[dict], guild_id: str | None = None) -> None:
+    """Tag items that are in the exclude list for this guild."""
+    try:
+        from modules.manhwa.db import get_supabase
+
+        # Load all exclusions (we don't have a per-guild filter in the
+        # caller for every item, so load the whole table — it's small).
+        res = get_supabase().table("exclude_list").select("title_key, source").execute()
+        ex_pairs = {
+            (str(r.get("title_key", "")).lower(), str(r.get("source", "")).lower())
+            for r in (res.data or [])
+        }
+    except Exception:
+        ex_pairs = set()
+
+    for it in to_send:
+        tk = str(it.get("title_key") or "").lower()
+        src = str(it.get("source") or "").lower()
+        it["excluded"] = (tk, src) in ex_pairs
+
+
 def dispatch(
     items: list[dict],
     channel_ids: list[str],
@@ -434,45 +455,59 @@ def dispatch(
     from modules.manhwa.services.dispatch.channels import source_whitelist_map
 
     raw_channels, _ = split_dispatch_targets(channel_ids)
+    exclude_channels: list[str] = []
+    # Load exclude channel from env + guild_settings
+    try:
+        from modules.manhwa.config import settings as _settings
+        _ex_ch = str(getattr(_settings, "EXCLUDE_DISCORD_CHANNEL_ID", "") or "").strip()
+        if _ex_ch:
+            exclude_channels.append(_ex_ch)
+    except Exception:
+        pass
+    try:
+        from modules.manhwa.db import get_supabase
+        res = get_supabase().table("guild_settings").select("exclude_channel_id").execute()
+        for r in (res.data or []):
+            _ch = str(r.get("exclude_channel_id") or "").strip()
+            if _ch and _ch not in exclude_channels:
+                exclude_channels.append(_ch)
+    except Exception:
+        pass
+
     src_wl_map = source_whitelist_map()
-    # Raw announcements are opt-in: with no raw channel configured every channel
-    # is a whitelist channel, which is the previous single-feed behaviour.
-    # Otherwise a raw feed would start publishing on a deployment that never
-    # asked for it.
     has_raw = bool(raw_channels)
     wl_unavailable = _tag_subscribed(to_send)
+    _tag_excluded(to_send)
 
     sent = 0
     for ch in channel_ids:
         _is_raw_ch = has_raw and ch in raw_channels
+        _is_exclude_ch = ch in exclude_channels
         if _is_raw_ch and wl_unavailable:
-            # Fail safe: an unreadable whitelist must never be read as "no
-            # subscriptions", or every whitelisted chapter lands on RAW.
             logger.info("dispatch: raw feed held (whitelist unreadable)", channel=ch)
             continue
-        # Raw channel: only items NOT whitelisted (every new chapter, minus the
-        # ones that already have a whitelist feed). Whitelist channel: the
-        # opposite set. Splitting here rather than upstream means one batch and
-        # one claim serve both feeds — a second pass would have to re-claim the
-        # same URLs and fight the claim guard.
-        #
-        # `subscribed == (not _is_raw_ch)`: raw ⇒ subscribed is False,
-        # whitelist ⇒ subscribed is True. Written as an equality rather than
-        # "!= _is_raw_ch" because the two read the same but only this one is
-        # obviously symmetric — the inverted form silently routes every
-        # whitelisted chapter to raw and every stray one to whitelist.
-        _feed = [it for it in to_send if bool(it.get("subscribed")) == (not _is_raw_ch)]
+        if _is_exclude_ch:
+            # Exclude channel: only send items that are marked excluded
+            _feed = [it for it in to_send if bool(it.get("excluded"))]
+            if not _feed:
+                logger.info("dispatch: feed empty", channel=ch, feed="exclude")
+                continue
+            logger.info("dispatch: channel=exclude feed", channel=ch, count=len(_feed))
+        else:
+            # Raw or whitelist: filter OUT excluded items
+            _feed = [it for it in to_send if not bool(it.get("excluded"))]
+            _feed = [it for it in _feed if bool(it.get("subscribed")) == (not _is_raw_ch)]
         # Per-source whitelist: a channel mapped to one source carries only
         # that source's whitelisted items, so shinigami and ikiru each get
         # their own thread instead of sharing one whitelist channel.
         _src = src_wl_map.get(ch)
-        if _src and not _is_raw_ch:
+        if _src and not _is_raw_ch and not _is_exclude_ch:
             _feed = [it for it in _feed if str(it.get("source") or "").strip().lower() == _src]
         if not _feed:
             logger.info(
                 "dispatch: feed empty",
                 channel=ch,
-                feed="raw" if _is_raw_ch else "whitelist",
+                feed="exclude" if _is_exclude_ch else ("raw" if _is_raw_ch else "whitelist"),
             )
             continue
         # Per-guild filters (multi-server). Falls back to empty filters when the

@@ -381,6 +381,21 @@ def retry_failed_dispatches(channel_ids: list[str] | None = None) -> dict:
                 )
             continue
 
+        # Skip excluded series — they belong in the exclude channel, not whitelist.
+        try:
+            _ex = get_supabase().table("exclude_list").select("title_key").eq("title_key", str(row.get("title_key") or "")).eq("source", _row_src).execute()
+            if (_ex.data or []):
+                try:
+                    get_supabase().table("failed_dispatches").update(
+                        {"status": "resolved", "updated_at": now.isoformat(), "error_message": "Series excluded"}
+                    ).eq("chapter_url", url).execute()
+                    skipped_unsubscribed += 1
+                except Exception as e:
+                    logger.warning("retry: exclude skip failed", url=url[:80], err=str(e)[:120])
+                continue
+        except Exception:
+            pass
+
         # Check permanent failure
         error_code = str(row.get("error_code", "UNKNOWN"))
         try:

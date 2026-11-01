@@ -254,20 +254,10 @@ def add_whitelist_button(
     title: str = "",
     series_url: str = "",
 ) -> list[dict]:
-    """The "Add to whitelist" button row for a RAW-feed chapter embed.
-
-    Carries `source` + `title_key` — the whitelist's composite PK — plus the
-    display title and series URL so the click handler can write the row without
-    a second lookup. Both are needed: title_key alone is not unique across
-    sources (one series can exist on shinigami and ikiru), and the whitelist
-    key is (title_key, source), not title_key.
-
-    Returns [] when the series is already whitelisted, or when the embed has
-    nothing stable to key on. An empty list is the caller's signal to send the
-    message without components — the previous shape of every dispatch.
-    """
+    """The "Add to whitelist" button row for a RAW-feed chapter embed."""
     if not title_key or not source:
         return []
+    from modules.manhwa.core.text import slugify_title_key
     return [
         {
             "type": 1,  # ACTION_ROW
@@ -277,7 +267,13 @@ def add_whitelist_button(
                     "style": 3,  # SUCCESS (green)
                     "label": "Add to whitelist",
                     "custom_id": encode_whitelist_custom_id(source, title_key),
-                }
+                },
+                {
+                    "type": 2,  # BUTTON
+                    "style": 4,  # DANGER (red)
+                    "label": "Exclude",
+                    "custom_id": f"exclude:{source}:{slugify_title_key(title_key)}",
+                },
             ],
         }
     ]

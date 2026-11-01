@@ -88,16 +88,17 @@ def _load_channels() -> list[str]:
     "Add to whitelist" button, so this was the whole feature missing.
 
     Returns the de-duplicated union of channel_id, raw_channel_id,
-    whitelist_channel_id, and env RAW_DISCORD_CHANNEL_ID /
-    WHITELIST_DISCORD_CHANNEL_ID. `channel_id` is ignored when either feed
-    column is set, so a guild that ran /setwhitelistchannel does not get
-    double-notified on the legacy channel.
+    whitelist_channel_id, exclude_channel_id, and env RAW_DISCORD_CHANNEL_ID /
+    WHITELIST_DISCORD_CHANNEL_ID / EXCLUDE_DISCORD_CHANNEL_ID.
+    `channel_id` is ignored when either feed is set, so a guild that ran
+    /setwhitelistchannel does not get double-notified on the legacy channel.
     """
     out: list[str] = []
     # Env channels: single-server deploy that never ran /setrawchannel.
     for _env_ch in (
         str(getattr(settings, "RAW_DISCORD_CHANNEL_ID", "") or "").strip(),
         str(getattr(settings, "WHITELIST_DISCORD_CHANNEL_ID", "") or "").strip(),
+        str(getattr(settings, "EXCLUDE_DISCORD_CHANNEL_ID", "") or "").strip(),
     ):
         if _env_ch and _env_ch not in out:
             out.append(_env_ch)
@@ -107,19 +108,22 @@ def _load_channels() -> list[str]:
         res = (
             get_supabase()
             .table("guild_settings")
-            .select("channel_id, raw_channel_id, whitelist_channel_id")
+            .select("channel_id, raw_channel_id, whitelist_channel_id, exclude_channel_id")
             .execute()
         )
         for r in res.data or []:
             _raw = str(r.get("raw_channel_id") or "").strip()
             _wl = str(r.get("whitelist_channel_id") or "").strip()
+            _ex = str(r.get("exclude_channel_id") or "").strip()
             _legacy = str(r.get("channel_id") or "").strip()
-            # Legacy channel_id is a fallback only when both feeds are unset.
-            if _raw or _wl:
+            # Legacy channel_id is a fallback only when all feeds are unset.
+            if _raw or _wl or _ex:
                 if _raw and _raw not in out:
                     out.append(_raw)
                 if _wl and _wl not in out:
                     out.append(_wl)
+                if _ex and _ex not in out:
+                    out.append(_ex)
             elif _legacy and _legacy not in out:
                 out.append(_legacy)
         # Per-source whitelist channels (each source gets its own thread).
